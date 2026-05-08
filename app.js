@@ -12,15 +12,358 @@ class ChatApp {
         this.supabase = null;
         this.realtimeChannel = null;
         this.currentLang = 'zh';
+        this.groups = [];
+        this.currentGroup = null;
+        this.groupMessages = {};
         this.init();
     }
 
     init() {
         this.bindEvents();
+        this.initGroupEvents();
         this.loadLanguage();
         this.loadTheme();
         this.loadUserData();
         this.startUptimeTimer();
+    }
+
+    initGroupEvents() {
+        document.getElementById('create-group-btn').addEventListener('click', () => this.showCreateGroupModal());
+        document.getElementById('close-create-group-modal').addEventListener('click', () => this.closeCreateGroupModal());
+        document.getElementById('confirm-create-group-btn').addEventListener('click', () => this.createGroup());
+
+        document.getElementById('close-group-info-modal').addEventListener('click', () => this.closeGroupInfoModal());
+        document.getElementById('invite-friends-btn').addEventListener('click', () => this.showInviteFriendsModal());
+        document.getElementById('close-invite-modal').addEventListener('click', () => this.closeInviteFriendsModal());
+        document.getElementById('confirm-invite-btn').addEventListener('click', () => this.inviteFriendsToGroup());
+
+        document.getElementById('group-search-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.searchGroup();
+        });
+
+        document.getElementById('join-group-btn').addEventListener('click', () => this.joinGroup());
+        document.getElementById('close-join-modal').addEventListener('click', () => this.closeJoinGroupModal());
+
+        document.getElementById('group-back-btn').addEventListener('click', () => this.closeGroupChatView());
+        document.getElementById('send-group-btn').addEventListener('click', () => this.sendGroupMessage());
+        document.getElementById('group-message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.sendGroupMessage();
+        });
+
+        document.getElementById('leave-group-btn').addEventListener('click', () => this.leaveGroup());
+        document.getElementById('dissolve-group-btn').addEventListener('click', () => this.dissolveGroup());
+    }
+
+    async loadGroups() {
+        if (!this.currentUser) return;
+        const result = await this.fetchData(`/api/groups/${this.currentUser.id}`);
+        if (result.success) {
+            this.groups = result.groups;
+        }
+    }
+
+    showCreateGroupModal() {
+        document.getElementById('create-group-modal').style.display = 'flex';
+        document.getElementById('group-name-input').value = '';
+        document.getElementById('group-number-input').value = '';
+    }
+
+    closeCreateGroupModal() {
+        document.getElementById('create-group-modal').style.display = 'none';
+    }
+
+    async createGroup() {
+        const groupName = document.getElementById('group-name-input').value.trim();
+        const groupNumber = document.getElementById('group-number-input').value.trim();
+
+        if (!groupName || !groupNumber) {
+            alert('请填写群名称和群号');
+            return;
+        }
+
+        this.setButtonLoading('confirm-create-group-btn', true);
+        const result = await this.fetchData('/api/group/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: this.currentUser.id,
+                groupName,
+                groupNumber
+            })
+        });
+        this.setButtonLoading('confirm-create-group-btn', false);
+
+        if (result.success) {
+            this.closeCreateGroupModal();
+            this.groups.push(result.group);
+            this.openGroupChat(result.group.id);
+        } else {
+            alert(result.message || '创建群聊失败');
+        }
+    }
+
+    async openGroupChat(groupId) {
+        const group = this.groups.find(g => g.id === groupId);
+        if (!group) return;
+
+        this.currentGroup = group;
+        document.getElementById('chat-view').style.display = 'none';
+        document.getElementById('group-chat-view').style.display = 'flex';
+        document.getElementById('group-chat-name').textContent = group.name;
+
+        await this.loadGroupMessages(groupId);
+        this.renderGroupMessages();
+    }
+
+    async loadGroupMessages(groupId) {
+        const result = await this.fetchData(`/api/group/${groupId}/messages`);
+        if (result.success) {
+            this.groupMessages[groupId] = result.messages;
+        }
+    }
+
+    closeGroupChatView() {
+        document.getElementById('group-chat-view').style.display = 'none';
+        this.currentGroup = null;
+        this.renderChatList();
+    }
+
+    renderGroupMessages() {
+        const container = document.getElementById('group-messages-container');
+        if (!this.currentGroup) {
+            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
+            return;
+        }
+
+        const messages = this.groupMessages[this.currentGroup.id] || [];
+        if (messages.length === 0) {
+            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
+            return;
+        }
+
+        container.innerHTML = messages.map(msg => {
+            const isMine = msg.senderId === this.currentUser.id;
+
+            let avatarContent = `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--talk-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; flex-shrink: 0;">
+                ${msg.senderName ? msg.senderName.charAt(0).toUpperCase() : 'U'}
+            </div>`;
+
+            let messageContent = `<p>${msg.content}</p>`;
+
+            return `
+                <div class="message-item" style="display: flex; flex-direction: ${isMine ? 'row-reverse' : 'row'}; margin-bottom: 12px; padding: 0 12px;">
+                    <div class="avatar-container" style="flex-shrink: 0; margin-top: 4px;">
+                        ${avatarContent}
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: ${isMine ? 'flex-end' : 'flex-start'}; max-width: 70%;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${isMine ? '我' : msg.senderName}</div>
+                        <div style="background: ${isMine ? 'linear-gradient(135deg, var(--talk-blue), var(--talk-dark-blue))' : 'var(--white)'}; color: ${isMine ? 'white' : 'var(--text-primary)'}; padding: 10px 14px; border-radius: ${isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px'}; box-shadow: var(--shadow-sm);">
+                            ${messageContent}
+                        </div>
+                        <span style="font-size: 11px; color: #999; margin-top: 4px; padding: 0 4px;">${msg.time}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async sendGroupMessage() {
+        if (!this.currentGroup) return;
+
+        const input = document.getElementById('group-message-input');
+        const content = input.value.trim();
+        if (!content) return;
+
+        this.setButtonLoading('send-group-btn', true);
+        const result = await this.fetchData('/api/group/message', {
+            method: 'POST',
+            body: JSON.stringify({
+                groupId: this.currentGroup.id,
+                senderId: this.currentUser.id,
+                content,
+                type: 'text'
+            })
+        });
+        this.setButtonLoading('send-group-btn', false);
+
+        if (result.success) {
+            if (!this.groupMessages[this.currentGroup.id]) {
+                this.groupMessages[this.currentGroup.id] = [];
+            }
+            this.groupMessages[this.currentGroup.id].push(result.message);
+            input.value = '';
+            this.renderGroupMessages();
+        }
+    }
+
+    async showGroupInfo() {
+        if (!this.currentGroup) return;
+
+        const result = await this.fetchData(`/api/group/${this.currentGroup.id}/members`);
+        if (result.success) {
+            this.renderGroupMembers(result.members);
+        }
+        document.getElementById('group-info-modal').style.display = 'flex';
+    }
+
+    renderGroupMembers(members) {
+        const list = document.getElementById('group-members-list');
+        list.innerHTML = members.map(m => `
+            <div class="group-member-item">
+                <span>${m.username} ${m.role === 'owner' ? '(群主)' : ''}</span>
+            </div>
+        `).join('');
+    }
+
+    closeGroupInfoModal() {
+        document.getElementById('group-info-modal').style.display = 'none';
+    }
+
+    showInviteFriendsModal() {
+        document.getElementById('invite-friends-modal').style.display = 'flex';
+        this.renderInviteFriendsList();
+    }
+
+    closeInviteFriendsModal() {
+        document.getElementById('invite-friends-modal').style.display = 'none';
+    }
+
+    renderInviteFriendsList() {
+        const list = document.getElementById('invite-friends-list');
+        list.innerHTML = this.friends.map(f => `
+            <div class="invite-friend-item">
+                <label>
+                    <input type="checkbox" value="${f.id}" class="invite-friend-checkbox">
+                    <span>${f.username}</span>
+                </label>
+            </div>
+        `).join('');
+    }
+
+    async inviteFriendsToGroup() {
+        if (!this.currentGroup) return;
+
+        const checkboxes = document.querySelectorAll('.invite-friend-checkbox:checked');
+        const friendIds = Array.from(checkboxes).map(cb => cb.value);
+
+        if (friendIds.length === 0) {
+            alert('请选择要邀请的好友');
+            return;
+        }
+
+        const result = await this.fetchData('/api/group/invite', {
+            method: 'POST',
+            body: JSON.stringify({
+                groupId: this.currentGroup.id,
+                inviterId: this.currentUser.id,
+                friendIds
+            })
+        });
+
+        if (result.success) {
+            this.closeInviteFriendsModal();
+            alert(result.message);
+        } else {
+            alert(result.message || '邀请失败');
+        }
+    }
+
+    async searchGroup() {
+        const groupNumber = document.getElementById('group-search-input').value.trim();
+        if (!groupNumber) return;
+
+        const result = await this.fetchData(`/api/group/search/${encodeURIComponent(groupNumber)}`);
+        if (result.success && result.group) {
+            document.getElementById('search-group-result').style.display = 'block';
+            document.getElementById('search-group-name').textContent = result.group.name;
+            document.getElementById('search-group-number').textContent = '群号: ' + result.group.group_number;
+            this.searchedGroup = result.group;
+        } else {
+            alert('群不存在');
+        }
+    }
+
+    showJoinGroupModal() {
+        document.getElementById('join-group-modal').style.display = 'flex';
+        document.getElementById('group-search-input').value = '';
+        document.getElementById('search-group-result').style.display = 'none';
+    }
+
+    closeJoinGroupModal() {
+        document.getElementById('join-group-modal').style.display = 'none';
+    }
+
+    async joinGroup() {
+        if (!this.searchedGroup) return;
+
+        const result = await this.fetchData('/api/group/join', {
+            method: 'POST',
+            body: JSON.stringify({
+                groupId: this.searchedGroup.id,
+                userId: this.currentUser.id
+            })
+        });
+
+        if (result.success) {
+            this.closeJoinGroupModal();
+            await this.loadGroups();
+            this.openGroupChat(this.searchedGroup.id);
+        } else {
+            alert(result.message || '加入失败');
+        }
+    }
+
+    async leaveGroup() {
+        if (!this.currentGroup) return;
+        if (!confirm('确定要退出群聊吗？')) return;
+
+        const result = await this.fetchData('/api/group/leave', {
+            method: 'POST',
+            body: JSON.stringify({
+                groupId: this.currentGroup.id,
+                userId: this.currentUser.id
+            })
+        });
+
+        if (result.success) {
+            this.groups = this.groups.filter(g => g.id !== this.currentGroup.id);
+            this.closeGroupChatView();
+        } else {
+            alert(result.message || '退出失败');
+        }
+    }
+
+    async dissolveGroup() {
+        if (!this.currentGroup) return;
+        if (!confirm('确定要解散群聊吗？此操作不可恢复！')) return;
+
+        const result = await this.fetchData('/api/group/dissolve', {
+            method: 'POST',
+            body: JSON.stringify({
+                groupId: this.currentGroup.id,
+                userId: this.currentUser.id
+            })
+        });
+
+        if (result.success) {
+            this.groups = this.groups.filter(g => g.id !== this.currentGroup.id);
+            this.closeGroupChatView();
+        } else {
+            alert(result.message || '解散失败');
+        }
+    }
+
+    async loadUserData() {
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+            this.currentUser = JSON.parse(storedUser);
+            await this.loadFriends();
+            await this.loadGroups();
+            this.loadMessages();
+            this.showMainScreen();
+            this.startPolling();
+        }
     }
 
     bindEvents() {
@@ -77,9 +420,6 @@ class ChatApp {
 
         // 语言切换
         document.getElementById('lang-toggle').addEventListener('change', (e) => this.toggleLanguage(e.target.checked));
-
-        // Ⱥ���¼���ʼ��
-        this.initGroupEvents();
     }
 
     startUptimeTimer() {
@@ -133,8 +473,18 @@ class ChatApp {
         this.pollInterval = setInterval(() => {
             if (this.currentUser) {
                 this.loadMessages();
+                this.pollGroupMessages();
             }
         }, 2000);
+    }
+
+    async pollGroupMessages() {
+        for (const group of this.groups) {
+            await this.loadGroupMessages(group.id);
+        }
+        if (this.currentGroup) {
+            this.renderGroupMessages();
+        }
     }
 
     stopPolling() {
@@ -193,12 +543,12 @@ class ChatApp {
         const confirmPassword = document.getElementById('register-password-confirm').value;
 
         if (password !== confirmPassword) {
-            document.getElementById('register-error').textContent = '两次输入的密码不一�?;
+            document.getElementById('register-error').textContent = '两次输入的密码不一致';
             return;
         }
 
         if (username.length < 3) {
-            document.getElementById('register-error').textContent = '用户名至少需�?个字�?;
+            document.getElementById('register-error').textContent = '用户名至少需要3个字符';
             return;
         }
 
@@ -281,7 +631,7 @@ class ChatApp {
         }
 
         if (newUsername.length < 3) {
-            document.getElementById('change-username-error').textContent = '账号至少需�?个字�?;
+            document.getElementById('change-username-error').textContent = '账号至少需要3个字符';
             return;
         }
 
@@ -325,7 +675,7 @@ class ChatApp {
         const titles = {
             chats: 'YanTalk',
             discover: '发现',
-            me: '�?
+            me: '我'
         };
         document.getElementById('page-title').textContent = titles[tab] || 'YanTalk';
 
@@ -336,13 +686,32 @@ class ChatApp {
 
     renderChatList() {
         const chatList = document.getElementById('chat-list');
+        let html = '';
 
-        if (this.friends.length === 0) {
-            chatList.innerHTML = '<div class="empty-state">暂无好友，请在搜索框输入账号添加好友</div>';
-            return;
-        }
+        html += this.groups.map(group => {
+            const groupMsgs = this.groupMessages[group.id] || [];
+            const lastMessage = groupMsgs[groupMsgs.length - 1];
+            const unreadCount = 0;
 
-        chatList.innerHTML = this.friends.map(friend => {
+            return `
+                <div class="chat-item group-item" data-group-id="${group.id}" onclick="app.openGroupChat('${group.id}')">
+                    <div class="avatar">
+                        <div style="width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 500;">
+                            G
+                        </div>
+                    </div>
+                    <div class="chat-info">
+                        <div class="chat-name">${group.name} ${group.role === 'owner' ? '(群主)' : ''}</div>
+                        <div class="chat-preview">${lastMessage ? lastMessage.content : '暂无消息'}</div>
+                    </div>
+                    <div>
+                        ${lastMessage ? `<div class="chat-time">${lastMessage.time}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        html += this.friends.map(friend => {
             const friendMessages = this.messages[friend.id] || [];
             const lastMessage = friendMessages[friendMessages.length - 1];
             const unreadCount = this.getUnreadCount(friend.id);
@@ -374,6 +743,13 @@ class ChatApp {
                 </div>
             `;
         }).join('');
+
+        if (this.groups.length === 0 && this.friends.length === 0) {
+            chatList.innerHTML = '<div class="empty-state">暂无好友或群聊，请搜索添加</div>';
+            return;
+        }
+
+        chatList.innerHTML = html;
     }
 
     getUnreadCount(friendId) {
@@ -476,14 +852,14 @@ class ChatApp {
         const container = document.getElementById('messages-container');
 
         if (!this.currentFriend) {
-            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧�?/p></div>';
+            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
             return;
         }
 
         const friendMessages = this.messages[this.currentFriend.id] || [];
 
         if (friendMessages.length === 0) {
-            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧�?/p></div>';
+            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
             return;
         }
 
@@ -559,7 +935,7 @@ class ChatApp {
             this.searchedFriend = result.user;
             this.showSearchResult(result.user);
         } else {
-            alert('用户不存�?);
+            alert('用户不存在');
         }
     }
 
@@ -669,7 +1045,7 @@ class ChatApp {
         e.target.value = '';
     }
 
-    // 图片发�?
+    // 图片发送
     async handleImageUpload(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -685,7 +1061,7 @@ class ChatApp {
             const result = await response.json();
 
             if (result.success) {
-                // 发送图片消�?
+                // 发送图片消息
                 const sendResult = await this.fetchData('/api/send-message', {
                     method: 'POST',
                     body: JSON.stringify({
@@ -735,12 +1111,12 @@ class ChatApp {
         const errorElement = document.getElementById('change-password-error');
 
         if (!oldPassword || !newPassword || !confirmPassword) {
-            errorElement.textContent = '请填写完�?;
+            errorElement.textContent = '请填写完整';
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            errorElement.textContent = '两次输入的新密码不一�?;
+            errorElement.textContent = '两次输入的新密码不一致';
             return;
         }
 
@@ -757,14 +1133,14 @@ class ChatApp {
 
         if (result.success) {
             this.closeChangePasswordModal();
-            alert('密码修改成功�?);
+            alert('密码修改成功！');
         } else {
             errorElement.textContent = result.message || '修改失败';
         }
     }
 
     logout() {
-        if (confirm('确定要退出登录吗�?)) {
+        if (confirm('确定要退出登录吗？')) {
             this.stopPolling();
             localStorage.removeItem('currentUser');
             this.currentUser = null;
@@ -783,7 +1159,7 @@ class ChatApp {
         if (navigator.share) {
             navigator.share({
                 title: 'YanTalk',
-                text: '来试�?YanTalk，简单好用的聊天工具�?,
+                text: '来试试 YanTalk，简单好用的聊天工具！',
                 url: url
             });
         } else {
@@ -844,15 +1220,15 @@ class ChatApp {
         content.classList.toggle('expanded');
 
         if (content.classList.contains('expanded')) {
-            // 展开时显�?
+            // 展开时显示
             content.style.display = 'block';
         } else {
-            // 折叠时隐�?
+            // 折叠时隐藏
             content.style.display = 'none';
         }
     }
 
-    // 语言�?
+    // 语言包
     translations = {
         zh: {
             login: '登录',
@@ -871,18 +1247,18 @@ class ChatApp {
             changeAccount: '修改账号',
             changeAvatar: '修改头像',
             changePassword: '修改密码',
-            logout: '退出登�?,
-            startChat: '开始聊天吧�?,
+            logout: '退出登录',
+            startChat: '开始聊天吧！',
             noFriends: '暂无好友，请在搜索框输入账号添加好友',
             changePasswordTitle: '修改密码',
-            oldPassword: '原密�?,
-            newPassword: '新密�?,
-            confirmNewPassword: '确认新密�?,
+            oldPassword: '原密码',
+            newPassword: '新密码',
+            confirmNewPassword: '确认新密码',
             changeAccountTitle: '修改账号',
-            inputNewAccount: '输入新账�?,
+            inputNewAccount: '输入新账号',
             cancel: '取消',
             confirm: '修改',
-            logoutConfirm: '确定要退出登录吗�?,
+            logoutConfirm: '确定要退出登录吗？',
             linkCopied: '链接已复制到剪贴板！',
             appName: 'YanTalk',
             appDesc: '即时通讯聊天工具',
@@ -958,16 +1334,16 @@ class ChatApp {
         document.querySelectorAll('#register-form input[type="password"]')[1].placeholder = t.password;
         document.getElementById('register-form-submit-btn').textContent = t.register;
 
-        // 搜索�?
+        // 搜索框
         document.getElementById('search-input').placeholder = t.searchPlaceholder;
         document.getElementById('confirm-add-friend-btn').textContent = t.add;
 
-        // 导航�?
+        // 导航栏
         document.querySelector('[data-tab="chats"] span:last-child').textContent = t.messages;
         document.querySelector('[data-tab="discover"] span:last-child').textContent = t.discover;
         document.querySelector('[data-tab="me"] span:last-child').textContent = t.me;
 
-        // 发现�?
+        // 发现页
         document.querySelector('#share-app-btn span:nth-child(2)').textContent = t.shareApp;
         document.querySelector('#toggle-theme-btn span:nth-child(2)').textContent = t.darkMode;
 
@@ -982,7 +1358,7 @@ class ChatApp {
             updateTitle.textContent = t.updateLog + ' v3.0.1';
         }
 
-        // 个人�?
+        // 个人页
         document.querySelector('#change-username-btn span:first-child').textContent = t.changeAccount;
         document.querySelector('#upload-avatar-btn span:first-child').textContent = t.changeAvatar;
         document.querySelector('#change-password-btn span:first-child').textContent = t.changePassword;
@@ -1000,7 +1376,7 @@ class ChatApp {
         document.getElementById('new-username-input').placeholder = t.inputNewAccount;
         document.getElementById('confirm-change-username-btn').textContent = t.confirm;
 
-        // 空状�?
+        // 空状态
         const emptyState = document.querySelector('.empty-state');
         if (emptyState) {
             emptyState.textContent = t.noFriends;
@@ -1018,9 +1394,9 @@ class ChatApp {
         // 版本信息
         document.querySelector('.version-info span:first-child').textContent = 'v3.0.1';
 
-        // 聊天输入�?
+        // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
-        document.getElementById('send-btn').textContent = this.currentLang === 'zh' ? '发�? : 'Send';
+        document.getElementById('send-btn').textContent = this.currentLang === 'zh' ? '发送' : 'Send';
     }
 }
 

@@ -1,7 +1,7 @@
 {
     "name": "telll",
     "version": "4.0.1",
-    "description": "Tell - 即时聊天软件（支持群聊）",
+    "description": "Tell - 鍗虫椂鑱婂ぉ杞欢锛堟敮鎸佺兢鑱婏級",
     "main": "index.js",
     "scripts": {
         "start": "node index.js",

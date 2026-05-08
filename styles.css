@@ -1032,3 +1032,74 @@ body.dark-mode .message.received {
 body.dark-mode .toggle-slider {
     background-color: #555;
 }
+
+.create-group-btn {
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.group-item {
+    border-left: 3px solid #667eea;
+}
+
+.group-members-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.group-member-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.group-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.group-action-btn {
+    padding: 10px;
+    background: var(--talk-blue);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.group-action-btn.danger {
+    background: #ff3b30;
+}
+
+.invite-friends-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.invite-friend-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.invite-friend-item label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.invite-friend-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}

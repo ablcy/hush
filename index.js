@@ -38,7 +38,7 @@ const upload = multer({
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('只允许上传图片文�?));
+      cb(new Error('只允许上传图片文件'));
     }
   }
 });
@@ -80,7 +80,7 @@ if (DATABASE_URL) {
   const { Pool } = require('pg');
   const pool = new Pool({
     connectionString: DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: DATABASE_URL ? { rejectUnauthorized: false } : false
   });
 
   const db = {
@@ -100,7 +100,7 @@ if (DATABASE_URL) {
   groupsDB = db;
   groupMembersDB = db;
   groupMessagesDB = db;
-  } else {
+} else {
   const Datastore = require('nedb');
   usersDB = new Datastore({ filename: './data/users.db', autoload: true });
   friendshipsDB = new Datastore({ filename: './data/friendships.db', autoload: true });
@@ -118,39 +118,27 @@ if (DATABASE_URL) {
   groupMembersDB.ensureIndex({ fieldName: 'group_id' });
   groupMembersDB.ensureIndex({ fieldName: ['group_id', 'user_id'], unique: true });
   groupMessagesDB.ensureIndex({ fieldName: 'group_id' });
-  }
+}
 
 async function initDB() {
   if (DATABASE_URL) {
     try {
-      console.log('Initializing PostgreSQL database...');
-
       await usersDB.query(`
         CREATE TABLE IF NOT EXISTS users (
           id TEXT PRIMARY KEY,
           username TEXT UNIQUE NOT NULL,
           password TEXT NOT NULL,
           avatar TEXT,
-          nickname TEXT DEFAULT '',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      console.log('Users table created/verified');
 
-      // 确保 nickname 列存�?
-      try {
-        await usersDB.query('ALTER TABLE users ADD COLUMN nickname TEXT DEFAULT \'\'');
-        console.log('Added nickname column to users table');
-      } catch (e) {
-        console.log('Nickname column already exists');
-      }
-
-      // 确保 avatar 列存�?
+      // 添加avatar列（如果不存在）
       try {
         await usersDB.query('ALTER TABLE users ADD COLUMN avatar TEXT');
-        console.log('Added avatar column to users table');
+        await usersDB.query('ALTER TABLE users ADD COLUMN nickname TEXT');
       } catch (e) {
-        console.log('Avatar column already exists');
+        // 列已存在，忽略错误
       }
 
       await friendshipsDB.query(`
@@ -161,7 +149,6 @@ async function initDB() {
           UNIQUE(user_id, friend_id)
         )
       `);
-      console.log('Friendships table created/verified');
 
       await messagesDB.query(`
         CREATE TABLE IF NOT EXISTS messages (
@@ -175,29 +162,59 @@ async function initDB() {
           read BOOLEAN DEFAULT FALSE
         )
       `);
-      console.log('Messages table created/verified');
 
       // 添加type列（如果不存在）
       try {
         await messagesDB.query('ALTER TABLE messages ADD COLUMN type TEXT DEFAULT \'text\'');
-        console.log('Added type column to messages table');
       } catch (e) {
-        console.log('Type column already exists in messages');
+        // 列已存在，忽略错误
       }
 
       await messagesDB.query(`
         CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON messages(sender_id, receiver_id)
       `);
-      console.log('Created messages index');
 
       await friendshipsDB.query(`
         CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)
       `);
-      console.log('Created friendships index');
+
+      await groupsDB.query(`
+        CREATE TABLE IF NOT EXISTS "groups" (
+          id TEXT PRIMARY KEY,
+          group_number TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          avatar TEXT,
+          owner_id TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await groupMembersDB.query(`
+        CREATE TABLE IF NOT EXISTS group_members (
+          id SERIAL PRIMARY KEY,
+          group_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          role TEXT DEFAULT 'member',
+          joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(group_id, user_id)
+        )
+      `);
+
+      await groupMessagesDB.query(`
+        CREATE TABLE IF NOT EXISTS group_messages (
+          id TEXT PRIMARY KEY,
+          group_id TEXT NOT NULL,
+          sender_id TEXT NOT NULL,
+          content TEXT NOT NULL,
+          type TEXT DEFAULT 'text',
+          time TEXT NOT NULL,
+          timestamp BIGINT NOT NULL
+        )
+      `);
 
       console.log('PostgreSQL database initialized successfully');
     } catch (error) {
-      console.error('Database initialization error:', error.message || error);
+      console.error('Database initialization error:', error);
     }
   } else {
     require('fs').mkdirSync('./data', { recursive: true });
@@ -221,41 +238,34 @@ function promisifyDB(method) {
 app.post('/api/register', async (req, res) => {
   const { username, password } = req.body;
 
-  console.log('Register attempt:', { username, hasPassword: !!password });
-
   if (!username || !password) {
     return res.status(400).json({ success: false, message: '用户名和密码不能为空' });
   }
 
   if (username.length < 3) {
-    return res.status(400).json({ success: false, message: '用户名至少需�?个字�? });
+    return res.status(400).json({ success: false, message: '用户名至少需要3个字符' });
   }
 
   try {
     let existing;
     if (DATABASE_URL) {
-      console.log('Checking existing user in PostgreSQL...');
       existing = await usersDB.query('SELECT id FROM users WHERE username = $1', [username]);
-      console.log('Existing check result:', existing.rows.length);
     } else {
       existing = await promisifyDB(usersDB.find).call(usersDB, { username });
     }
 
     if ((DATABASE_URL && existing.rows.length > 0) || (!DATABASE_URL && existing.length > 0)) {
-      return res.status(400).json({ success: false, message: '用户名已被使�? });
+      return res.status(400).json({ success: false, message: '用户名已被使用' });
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const userId = uuidv4();
-
-    console.log('Creating new user:', { userId, username });
 
     if (DATABASE_URL) {
       await usersDB.query(
         'INSERT INTO users (id, username, password, avatar, nickname) VALUES ($1, $2, $3, $4, $5)',
         [userId, username, hashedPassword, null, '']
       );
-      console.log('User inserted into PostgreSQL');
     } else {
       await promisifyDB(usersDB.insert).call(usersDB, {
         _id: userId,
@@ -272,8 +282,8 @@ app.post('/api/register', async (req, res) => {
 
     res.json({ success: true, user: { id: userId, username, avatar: null, nickname: '' } });
   } catch (error) {
-    console.error('Register error:', error.message || error);
-    res.status(500).json({ success: false, message: '注册失败: ' + (error.message || '未知错误') });
+    console.error('Register error:', error);
+    res.status(500).json({ success: false, message: '注册失败' });
   }
 });
 
@@ -424,7 +434,7 @@ app.get('/api/user/:username', async (req, res) => {
     const userData = DATABASE_URL ? user.rows[0] : user[0];
 
     if (!userData) {
-      return res.status(400).json({ success: false, message: '用户不存�? });
+      return res.status(400).json({ success: false, message: '用户不存在' });
     }
 
     res.json({ success: true, user: userData });
@@ -456,11 +466,11 @@ app.post('/api/add-friend', async (req, res) => {
     const friendData = DATABASE_URL ? friend.rows[0] : friend[0];
 
     if (!friendData) {
-      return res.status(400).json({ success: false, message: '用户不存�? });
+      return res.status(400).json({ success: false, message: '用户不存在' });
     }
 
     if (userId === friendData.id) {
-      return res.status(400).json({ success: false, message: '不能添加自己为好�? });
+      return res.status(400).json({ success: false, message: '不能添加自己为好友' });
     }
 
     let existing;
@@ -477,7 +487,7 @@ app.post('/api/add-friend', async (req, res) => {
     }
 
     if ((DATABASE_URL && existing.rows.length > 0) || (!DATABASE_URL && existing.length > 0)) {
-      return res.status(400).json({ success: false, message: '已经是好�? });
+      return res.status(400).json({ success: false, message: '已经是好友' });
     }
 
     if (DATABASE_URL) {
@@ -646,7 +656,7 @@ app.post('/api/send-message', async (req, res) => {
     res.json({ success: true, message });
   } catch (error) {
     console.error('Send message error:', error);
-    res.status(500).json({ success: false, message: '发送失�? });
+    res.status(500).json({ success: false, message: '发送失败' });
   }
 });
 
@@ -716,7 +726,7 @@ app.get('/api/admin/verify', (req, res) => {
   if (token && validateAdminToken(token)) {
     res.json({ success: true, username: ADMIN_USERNAME });
   } else {
-    res.status(401).json({ success: false, message: '未登�? });
+    res.status(401).json({ success: false, message: '未登录' });
   }
 });
 
@@ -838,7 +848,7 @@ app.post('/api/change-password', async (req, res) => {
   }
 
   if (newPassword.length < 1) {
-    return res.status(400).json({ success: false, message: '新密码不能为�? });
+    return res.status(400).json({ success: false, message: '新密码不能为空' });
   }
 
   try {
@@ -852,13 +862,13 @@ app.post('/api/change-password', async (req, res) => {
     const userData = DATABASE_URL ? user.rows[0] : user[0];
 
     if (!userData) {
-      return res.status(400).json({ success: false, message: '用户不存�? });
+      return res.status(400).json({ success: false, message: '用户不存在' });
     }
 
     const passwordMatch = await bcrypt.compare(oldPassword, userData.password);
 
     if (!passwordMatch) {
-      return res.status(400).json({ success: false, message: '原密码错�? });
+      return res.status(400).json({ success: false, message: '原密码错误' });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
@@ -889,11 +899,11 @@ app.post('/api/change-username', async (req, res) => {
   }
 
   if (username.length < 3) {
-    return res.status(400).json({ success: false, message: '账号至少需�?个字�? });
+    return res.status(400).json({ success: false, message: '账号至少需要3个字符' });
   }
 
   if (username.length > 20) {
-    return res.status(400).json({ success: false, message: '账号不能超过20个字�? });
+    return res.status(400).json({ success: false, message: '账号不能超过20个字符' });
   }
 
   try {
@@ -905,7 +915,7 @@ app.post('/api/change-username', async (req, res) => {
     }
 
     if ((DATABASE_URL && existing.rows.length > 0) || (!DATABASE_URL && existing.length > 0)) {
-      return res.status(400).json({ success: false, message: '该账号已被使�? });
+      return res.status(400).json({ success: false, message: '该账号已被使用' });
     }
 
     if (DATABASE_URL) {
@@ -925,46 +935,6 @@ app.post('/api/change-username', async (req, res) => {
   }
 });
 
-// 数据库修复API
-app.post('/api/fix-db', async (req, res) => {
-  if (!DATABASE_URL) {
-    return res.json({ success: true, message: 'Not using PostgreSQL' });
-  }
-  
-  try {
-    console.log('Fixing database schema...');
-    
-    // 添加 nickname �?
-    try {
-      await usersDB.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT \'\'');
-      console.log('Fixed nickname column');
-    } catch (e) {
-      console.log('Nickname column fix error:', e.message);
-    }
-    
-    // 添加 avatar �?
-    try {
-      await usersDB.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT');
-      console.log('Fixed avatar column');
-    } catch (e) {
-      console.log('Avatar column fix error:', e.message);
-    }
-    
-    // 添加 type 列到 messages
-    try {
-      await messagesDB.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS type TEXT DEFAULT \'text\'');
-      console.log('Fixed type column in messages');
-    } catch (e) {
-      console.log('Type column fix error:', e.message);
-    }
-    
-    res.json({ success: true, message: 'Database schema fixed successfully' });
-  } catch (error) {
-    console.error('Database fix error:', error);
-    res.status(500).json({ success: false, message: 'Database fix failed: ' + error.message });
-  }
-});
-
 // 上传图片API
 app.post('/api/upload-image', upload.single('image'), async (req, res) => {
   try {
@@ -980,24 +950,24 @@ app.post('/api/upload-image', upload.single('image'), async (req, res) => {
   }
 });
 
-// ����Ⱥ��
+// 创建群聊
 app.post('/api/group/create', async (req, res) => {
   try {
     const { userId, groupName, groupNumber } = req.body;
 
     if (!userId || !groupName || !groupNumber) {
-      return res.status(400).json({ success: false, message: '����������' });
+      return res.status(400).json({ success: false, message: '参数不完整' });
     }
 
     if (DATABASE_URL) {
-      const existingGroup = await groupsDB.query('SELECT id FROM `groups` WHERE group_number = $1', [groupNumber]);
+      const existingGroup = await groupsDB.query('SELECT id FROM "groups" WHERE group_number = $1', [groupNumber]);
       if (existingGroup.rows.length > 0) {
-        return res.status(400).json({ success: false, message: 'Ⱥ���ѱ�ʹ��' });
+        return res.status(400).json({ success: false, message: '群号已被使用' });
       }
 
       const groupId = uuidv4();
       await groupsDB.query(
-        'INSERT INTO `groups` (id, group_number, name, owner_id) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO "groups" (id, group_number, name, owner_id) VALUES ($1, $2, $3, $4)',
         [groupId, groupNumber, groupName, userId]
       );
 
@@ -1008,9 +978,9 @@ app.post('/api/group/create', async (req, res) => {
 
       res.json({ success: true, group: { id: groupId, group_number: groupNumber, name: groupName, owner_id: userId } });
     } else {
-      const existingGroup = await promisifyDB(groupsDB.findOne).call(groupsDB, { group_number: groupNumber });
-      if (existingGroup) {
-        return res.status(400).json({ success: false, message: 'Ⱥ���ѱ�ʹ��' });
+      const existingGroup = await promisifyDB(groupsDB.find).call(groupsDB, { group_number: groupNumber });
+      if (existingGroup.length > 0) {
+        return res.status(400).json({ success: false, message: '群号已被使用' });
       }
 
       const groupId = uuidv4();
@@ -1024,7 +994,6 @@ app.post('/api/group/create', async (req, res) => {
       });
 
       await promisifyDB(groupMembersDB.insert).call(groupMembersDB, {
-        _id: uuidv4(),
         group_id: groupId,
         user_id: userId,
         role: 'owner',
@@ -1035,102 +1004,146 @@ app.post('/api/group/create', async (req, res) => {
     }
   } catch (error) {
     console.error('Create group error:', error);
-    res.status(500).json({ success: false, message: '����Ⱥ��ʧ��' });
+    res.status(500).json({ success: false, message: '创建群聊失败' });
   }
 });
 
-// ��ȡ�û����ڵ�����Ⱥ
+// 获取用户所在的群聊列表
 app.get('/api/groups/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    let groups = [];
+    let groupDocs;
     if (DATABASE_URL) {
-      const result = await groupMembersDB.query(
-        'SELECT g.id, g.group_number, g.name, g.avatar, g.owner_id FROM `groups` g INNER JOIN group_members gm ON g.id = gm.group_id WHERE gm.user_id = $1',
+      groupDocs = await groupMembersDB.query(
+        'SELECT group_id, role FROM group_members WHERE user_id = $1',
         [userId]
       );
-      groups = result.rows;
     } else {
-      const memberships = await promisifyDB(groupMembersDB.find).call(groupMembersDB, { user_id: userId });
-      for (const m of memberships) {
-        const group = await promisifyDB(groupsDB.findOne).call(groupsDB, { id: m.group_id });
-        if (group) groups.push(group);
-      }
+      groupDocs = await promisifyDB(groupMembersDB.find).call(groupMembersDB, { user_id: userId });
     }
+
+    const memberGroups = DATABASE_URL ? groupDocs.rows : groupDocs;
+    if (memberGroups.length === 0) {
+      return res.json({ success: true, groups: [] });
+    }
+
+    const groupIds = memberGroups.map(m => m.group_id);
+    let groupsData;
+    if (DATABASE_URL) {
+      const placeholders = groupIds.map((_, i) => `$${i + 1}`).join(',');
+      groupsData = await groupsDB.query(
+        `SELECT id, group_number, name, avatar, owner_id, created_at FROM "groups" WHERE id IN (${placeholders})`,
+        groupIds
+      );
+    } else {
+      groupsData = await promisifyDB(groupsDB.find).call(groupsDB, { id: { $in: groupIds } });
+    }
+
+    const groups = (DATABASE_URL ? groupsData.rows : groupsData).map(g => {
+      const member = memberGroups.find(m => m.group_id === g.id);
+      return { ...g, role: member?.role || 'member' };
+    });
 
     res.json({ success: true, groups });
   } catch (error) {
     console.error('Get groups error:', error);
-    res.status(500).json({ success: false, message: '��ȡȺ�б�ʧ��' });
+    res.status(500).json({ success: false, message: '获取群列表失败' });
   }
 });
 
-// ��ȡȺ��Ա
+// 获取群成员
 app.get('/api/group/:groupId/members', async (req, res) => {
   try {
     const { groupId } = req.params;
 
-    let members = [];
+    let memberDocs;
     if (DATABASE_URL) {
-      const result = await groupMembersDB.query(
-        'SELECT gm.role, gm.joined_at, u.id, u.username, u.avatar, u.nickname FROM group_members gm INNER JOIN users u ON gm.user_id = u.id WHERE gm.group_id = $1',
+      memberDocs = await groupMembersDB.query(
+        'SELECT user_id, role FROM group_members WHERE group_id = $1',
         [groupId]
       );
-      members = result.rows;
     } else {
-      members = await promisifyDB(groupMembersDB.find).call(groupMembersDB, { group_id: groupId });
-      for (const m of members) {
-        const user = await promisifyDB(usersDB.findOne).call(usersDB, { id: m.user_id });
-        if (user) {
-          m.username = user.username;
-          m.avatar = user.avatar;
-          m.nickname = user.nickname;
-        }
-      }
+      memberDocs = await promisifyDB(groupMembersDB.find).call(groupMembersDB, { group_id: groupId });
     }
 
-    res.json({ success: true, members });
+    const members = DATABASE_URL ? memberDocs.rows : memberDocs;
+    if (members.length === 0) {
+      return res.json({ success: true, members: [] });
+    }
+
+    const userIds = members.map(m => m.user_id);
+    let usersData;
+    if (DATABASE_URL) {
+      const placeholders = userIds.map((_, i) => `$${i + 1}`).join(',');
+      usersData = await usersDB.query(
+        `SELECT id, username, avatar, nickname FROM users WHERE id IN (${placeholders})`,
+        userIds
+      );
+    } else {
+      usersData = await promisifyDB(usersDB.find).call(usersDB, { id: { $in: userIds } });
+    }
+
+    const membersWithInfo = (DATABASE_URL ? usersData.rows : usersData).map(u => {
+      const member = members.find(m => m.user_id === u.id);
+      return { ...u, role: member?.role || 'member' };
+    });
+
+    res.json({ success: true, members: membersWithInfo });
   } catch (error) {
-    console.error('Get group members error:', error);
-    res.status(500).json({ success: false, message: '��ȡȺ��Աʧ��' });
+    console.error('Get members error:', error);
+    res.status(500).json({ success: false, message: '获取群成员失败' });
   }
 });
 
-// Ⱥ�������ѽ�Ⱥ
+// 邀请好友入群
 app.post('/api/group/invite', async (req, res) => {
   try {
-    const { groupId, friendIds, ownerId } = req.body;
+    const { groupId, inviterId, friendIds } = req.body;
 
-    let group = null;
-    if (DATABASE_URL) {
-      const result = await groupsDB.query('SELECT owner_id FROM `groups` WHERE id = $1', [groupId]);
-      if (result.rows.length > 0) group = result.rows[0];
-    } else {
-      group = await promisifyDB(groupsDB.findOne).call(groupsDB, { id: groupId });
+    if (!groupId || !inviterId || !friendIds || !Array.isArray(friendIds)) {
+      return res.status(400).json({ success: false, message: '参数错误' });
     }
 
-    if (!group || group.owner_id !== ownerId) {
-      return res.status(403).json({ success: false, message: 'ֻ��Ⱥ����������' });
+    if (DATABASE_URL) {
+      const ownerCheck = await groupMembersDB.query(
+        'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, inviterId]
+      );
+      if (ownerCheck.rows.length === 0 || ownerCheck.rows[0].role !== 'owner') {
+        return res.status(403).json({ success: false, message: '只有群主可以邀请' });
+      }
+    } else {
+      const ownerCheck = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: inviterId
+      });
+      if (ownerCheck.length === 0 || ownerCheck[0].role !== 'owner') {
+        return res.status(403).json({ success: false, message: '只有群主可以邀请' });
+      }
     }
 
     const addedMembers = [];
     for (const friendId of friendIds) {
       if (DATABASE_URL) {
-        try {
+        const existing = await groupMembersDB.query(
+          'SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2',
+          [groupId, friendId]
+        );
+        if (existing.rows.length === 0) {
           await groupMembersDB.query(
             'INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, $3)',
             [groupId, friendId, 'member']
           );
           addedMembers.push(friendId);
-        } catch (e) {
-          console.log('Member already in group or error:', e.message);
         }
       } else {
-        const existing = await promisifyDB(groupMembersDB.findOne).call(groupMembersDB, { group_id: groupId, user_id: friendId });
-        if (!existing) {
+        const existing = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+          group_id: groupId,
+          user_id: friendId
+        });
+        if (existing.length === 0) {
           await promisifyDB(groupMembersDB.insert).call(groupMembersDB, {
-            _id: uuidv4(),
             group_id: groupId,
             user_id: friendId,
             role: 'member',
@@ -1141,44 +1154,65 @@ app.post('/api/group/invite', async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: '�ѳɹ�����' + addedMembers.length + '��', addedMembers });
+    res.json({ success: true, message: '已成功邀请' + addedMembers.length + '人', addedMembers });
   } catch (error) {
     console.error('Invite to group error:', error);
-    res.status(500).json({ success: false, message: '������Ⱥʧ��' });
+    res.status(500).json({ success: false, message: '邀请入群失败' });
   }
 });
 
-// ����Ⱥ��Ϣ
+// 发送群消息
 app.post('/api/group/message', async (req, res) => {
   try {
     const { groupId, senderId, content, type = 'text' } = req.body;
 
-    let member = null;
-    if (DATABASE_URL) {
-      const result = await groupMembersDB.query('SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, senderId]);
-      if (result.rows.length > 0) member = result.rows[0];
-    } else {
-      member = await promisifyDB(groupMembersDB.findOne).call(groupMembersDB, { group_id: groupId, user_id: senderId });
+    if (!groupId || !senderId || !content) {
+      return res.status(400).json({ success: false, message: '参数错误' });
     }
 
-    if (!member) {
-      return res.status(403).json({ success: false, message: '�㲻��Ⱥ��Ա' });
+    if (DATABASE_URL) {
+      const memberCheck = await groupMembersDB.query(
+        'SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, senderId]
+      );
+      if (memberCheck.rows.length === 0) {
+        return res.status(403).json({ success: false, message: '你不是群成员' });
+      }
+    } else {
+      const memberCheck = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: senderId
+      });
+      if (memberCheck.length === 0) {
+        return res.status(403).json({ success: false, message: '你不是群成员' });
+      }
     }
+
+    const now = new Date();
+    const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+    const year = beijingTime.getUTCFullYear();
+    const month = String(beijingTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(beijingTime.getUTCDate()).padStart(2, '0');
+    const hours = String(beijingTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(beijingTime.getUTCMinutes()).padStart(2, '0');
+    const formattedTime = `${year}/${month}/${day} ${hours}:${minutes}`;
 
     const messageId = uuidv4();
-    const time = new Date().toLocaleString('zh-CN', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit', 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    }).replace(/\//g, '-');
-    const timestamp = Date.now();
+    const message = {
+      id: messageId,
+      groupId: groupId,
+      senderId: senderId,
+      content,
+      type,
+      time: formattedTime,
+      timestamp: Date.now()
+    };
 
     if (DATABASE_URL) {
       await groupMessagesDB.query(
-        'INSERT INTO group_messages (id, group_id, sender_id, content, type, time, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [messageId, groupId, senderId, content, type, time, timestamp]
+        `INSERT INTO group_messages (id, group_id, sender_id, content, type, time, timestamp)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [messageId, groupId, senderId, content, type, formattedTime, Date.now()]
       );
     } else {
       await promisifyDB(groupMessagesDB.insert).call(groupMessagesDB, {
@@ -1188,126 +1222,230 @@ app.post('/api/group/message', async (req, res) => {
         sender_id: senderId,
         content,
         type,
-        time,
-        timestamp
+        time: formattedTime,
+        timestamp: Date.now()
       });
     }
 
-    res.json({ success: true, message: { id: messageId, group_id: groupId, sender_id: senderId, content, type, time, timestamp } });
+    let senderInfo;
+    if (DATABASE_URL) {
+      const sender = await usersDB.query('SELECT username FROM users WHERE id = $1', [senderId]);
+      senderInfo = sender.rows[0];
+    } else {
+      const sender = await promisifyDB(usersDB.find).call(usersDB, { id: senderId });
+      senderInfo = sender[0];
+    }
+
+    res.json({
+      success: true,
+      message: { ...message, senderName: senderInfo?.username || 'Unknown' }
+    });
   } catch (error) {
     console.error('Send group message error:', error);
-    res.status(500).json({ success: false, message: '����Ⱥ��Ϣʧ��' });
+    res.status(500).json({ success: false, message: '发送群消息失败' });
   }
 });
 
-// ��ȡȺ��Ϣ
+// 获取群消息
 app.get('/api/group/:groupId/messages', async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { limit = 50 } = req.query;
 
-    let messages = [];
+    let msgs;
     if (DATABASE_URL) {
-      const result = await groupMessagesDB.query(
-        'SELECT gm.id, gm.sender_id, gm.content, gm.type, gm.time, u.username FROM group_messages gm INNER JOIN users u ON gm.sender_id = u.id WHERE gm.group_id = $1 ORDER BY gm.timestamp ASC LIMIT $2',
-        [groupId, parseInt(limit)]
+      msgs = await groupMessagesDB.query(
+        `SELECT id, group_id, sender_id, content, type, time, timestamp
+         FROM group_messages WHERE group_id = $1 ORDER BY timestamp ASC`,
+        [groupId]
       );
-      messages = result.rows;
     } else {
-      messages = await promisifyDB(groupMessagesDB.find).call(groupMessagesDB, { group_id: groupId });
-      messages.sort((a, b) => a.timestamp - b.timestamp);
-      messages = messages.slice(-parseInt(limit));
-      for (const m of messages) {
-        const user = await promisifyDB(usersDB.findOne).call(usersDB, { id: m.sender_id });
-        if (user) m.username = user.username;
-      }
+      msgs = await promisifyDB(groupMessagesDB.find).call(groupMessagesDB, { group_id: groupId });
+      msgs = msgs.sort((a, b) => a.timestamp - b.timestamp);
     }
+
+    const messages = (DATABASE_URL ? msgs.rows : msgs).map(msg => {
+      const senderId = DATABASE_URL ? msg.sender_id : msg.senderId;
+      return {
+        id: msg.id,
+        groupId: msg.group_id || msg.groupId,
+        senderId: senderId,
+        content: msg.content,
+        type: msg.type || 'text',
+        time: msg.time,
+        timestamp: msg.timestamp
+      };
+    });
 
     res.json({ success: true, messages });
   } catch (error) {
     console.error('Get group messages error:', error);
-    res.status(500).json({ success: false, message: '��ȡȺ��Ϣʧ��' });
+    res.status(500).json({ success: false, message: '获取群消息失败' });
   }
 });
 
-// �˳�Ⱥ
+// 退出群聊
 app.post('/api/group/leave', async (req, res) => {
   try {
     const { groupId, userId } = req.body;
 
-    let group = null;
+    if (!groupId || !userId) {
+      return res.status(400).json({ success: false, message: '参数错误' });
+    }
+
+    let ownerCheck;
     if (DATABASE_URL) {
-      const result = await groupsDB.query('SELECT owner_id FROM `groups` WHERE id = $1', [groupId]);
-      if (result.rows.length > 0) group = result.rows[0];
+      ownerCheck = await groupMembersDB.query(
+        'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, userId]
+      );
     } else {
-      group = await promisifyDB(groupsDB.findOne).call(groupsDB, { id: groupId });
+      ownerCheck = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: userId
+      });
     }
 
-    if (group && group.owner_id === userId) {
-      return res.status(400).json({ success: false, message: 'Ⱥ�������˳�Ⱥ�����Ƚ�ɢȺ' });
+    const member = DATABASE_URL ? ownerCheck.rows[0] : ownerCheck[0];
+    if (member?.role === 'owner') {
+      return res.status(400).json({ success: false, message: '群主无法退出群聊，请先解散群' });
     }
 
     if (DATABASE_URL) {
-      await groupMembersDB.query('DELETE FROM group_members WHERE group_id = $1 AND user_id = $2', [groupId, userId]);
+      await groupMembersDB.query(
+        'DELETE FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, userId]
+      );
     } else {
-      await promisifyDB(groupMembersDB.remove).call(groupMembersDB, { group_id: groupId, user_id: userId });
+      await promisifyDB(groupMembersDB.remove).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: userId
+      }, { multi: true });
     }
 
-    res.json({ success: true, message: '���˳�Ⱥ' });
+    res.json({ success: true, message: '已退出群聊' });
   } catch (error) {
     console.error('Leave group error:', error);
-    res.status(500).json({ success: false, message: '�˳�Ⱥʧ��' });
+    res.status(500).json({ success: false, message: '退出群聊失败' });
   }
 });
 
-// ��ɢȺ��Ⱥ����
+// 解散群聊
 app.post('/api/group/dissolve', async (req, res) => {
   try {
     const { groupId, userId } = req.body;
 
-    let group = null;
-    if (DATABASE_URL) {
-      const result = await groupsDB.query('SELECT owner_id FROM `groups` WHERE id = $1', [groupId]);
-      if (result.rows.length > 0) group = result.rows[0];
-    } else {
-      group = await promisifyDB(groupsDB.findOne).call(groupsDB, { id: groupId });
+    if (!groupId || !userId) {
+      return res.status(400).json({ success: false, message: '参数错误' });
     }
 
-    if (!group || group.owner_id !== userId) {
-      return res.status(403).json({ success: false, message: 'ֻ��Ⱥ�����Խ�ɢȺ' });
+    let ownerCheck;
+    if (DATABASE_URL) {
+      ownerCheck = await groupMembersDB.query(
+        'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, userId]
+      );
+    } else {
+      ownerCheck = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: userId
+      });
+    }
+
+    const member = DATABASE_URL ? ownerCheck.rows[0] : ownerCheck[0];
+    if (!member || member.role !== 'owner') {
+      return res.status(403).json({ success: false, message: '只有群主可以解散群' });
     }
 
     if (DATABASE_URL) {
       await groupMessagesDB.query('DELETE FROM group_messages WHERE group_id = $1', [groupId]);
       await groupMembersDB.query('DELETE FROM group_members WHERE group_id = $1', [groupId]);
-      await groupsDB.query('DELETE FROM `groups` WHERE id = $1', [groupId]);
+      await groupsDB.query('DELETE FROM "groups" WHERE id = $1', [groupId]);
     } else {
-      await groupMessagesDB.remove({ group_id: groupId });
-      await groupMembersDB.remove({ group_id: groupId });
-      await groupsDB.remove({ id: groupId });
+      await promisifyDB(groupMessagesDB.remove).call(groupMessagesDB, { group_id: groupId }, { multi: true });
+      await promisifyDB(groupMembersDB.remove).call(groupMembersDB, { group_id: groupId }, { multi: true });
+      await promisifyDB(groupsDB.remove).call(groupsDB, { id: groupId }, { multi: false });
     }
 
-    res.json({ success: true, message: 'Ⱥ�ѽ�ɢ' });
+    res.json({ success: true, message: '群已解散' });
   } catch (error) {
     console.error('Dissolve group error:', error);
-    res.status(500).json({ success: false, message: '��ɢȺʧ��' });
+    res.status(500).json({ success: false, message: '解散群失败' });
   }
 });
 
-async function startServer() {
-  await initDB();
-  app.listen(PORT, () => {
-    console.log(`Tell server running on port ${PORT}`);
-    console.log(DATABASE_URL ? 'Using PostgreSQL' : 'Using NeDB for development');
-    if (DATABASE_URL) {
-      console.log('Database URL configured, tables should be initialized');
-    }
-  });
-}
+// 根据群号搜索群
+app.get('/api/group/search/:groupNumber', async (req, res) => {
+  try {
+    const { groupNumber } = req.params;
 
-startServer().catch(error => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
+    let group;
+    if (DATABASE_URL) {
+      group = await groupsDB.query('SELECT id, group_number, name, avatar, owner_id FROM "groups" WHERE group_number = $1', [groupNumber]);
+    } else {
+      group = await promisifyDB(groupsDB.find).call(groupsDB, { group_number: groupNumber });
+    }
+
+    const groupData = DATABASE_URL ? group.rows[0] : group[0];
+    if (!groupData) {
+      return res.status(404).json({ success: false, message: '群不存在' });
+    }
+
+    res.json({ success: true, group: groupData });
+  } catch (error) {
+    console.error('Search group error:', error);
+    res.status(500).json({ success: false, message: '搜索群失败' });
+  }
+});
+
+// 申请加入群
+app.post('/api/group/join', async (req, res) => {
+  try {
+    const { groupId, userId } = req.body;
+
+    if (!groupId || !userId) {
+      return res.status(400).json({ success: false, message: '参数错误' });
+    }
+
+    if (DATABASE_URL) {
+      const existing = await groupMembersDB.query(
+        'SELECT id FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, userId]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ success: false, message: '你已经是群成员' });
+      }
+
+      await groupMembersDB.query(
+        'INSERT INTO group_members (group_id, user_id, role) VALUES ($1, $2, $3)',
+        [groupId, userId, 'member']
+      );
+    } else {
+      const existing = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: userId
+      });
+      if (existing.length > 0) {
+        return res.status(400).json({ success: false, message: '你已经是群成员' });
+      }
+
+      await promisifyDB(groupMembersDB.insert).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: userId,
+        role: 'member',
+        joined_at: new Date().toISOString()
+      });
+    }
+
+    res.json({ success: true, message: '加入成功' });
+  } catch (error) {
+    console.error('Join group error:', error);
+    res.status(500).json({ success: false, message: '加入群失败' });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Tell server running on port ${PORT}`);
+  console.log(DATABASE_URL ? 'Using PostgreSQL' : 'Using NeDB for development');
 });
 
 module.exports = app;
