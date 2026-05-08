@@ -783,11 +783,11 @@ class ChatApp {
         document.getElementById(`tab-${tab}`).classList.add('active');
 
         const titles = {
-            chats: 'YanTalk',
+            chats: 'Tell',
             discover: '发现',
             me: '我'
         };
-        document.getElementById('page-title').textContent = titles[tab] || 'YanTalk';
+        document.getElementById('page-title').textContent = titles[tab] || 'Tell';
 
         if (tab === 'chats') {
             this.renderChatList();
@@ -1331,8 +1331,8 @@ class ChatApp {
         const url = window.location.href;
         if (navigator.share) {
             navigator.share({
-                title: 'YanTalk',
-                text: '来试试 YanTalk，简单好用的聊天工具！',
+                title: 'Tell',
+                text: '来试试 Tell，简单好用的聊天工具！',
                 url: url
             });
         } else {
@@ -1433,7 +1433,7 @@ class ChatApp {
             confirm: '修改',
             logoutConfirm: '确定要退出登录吗？',
             linkCopied: '链接已复制到剪贴板！',
-            appName: 'YanTalk',
+            appName: 'Tell',
             appDesc: '即时通讯聊天工具',
             copyright: '© 2026 Li Chengyan. All Rights Reserved.'
         },
@@ -1467,7 +1467,7 @@ class ChatApp {
             confirm: 'Confirm',
             logoutConfirm: 'Are you sure you want to logout?',
             linkCopied: 'Link copied to clipboard!',
-            appName: 'YanTalk',
+            appName: 'Tell',
             appDesc: 'Instant Messaging Chat Tool',
             copyright: '© 2026 Li Chengyan. All Rights Reserved.'
         }
