@@ -497,13 +497,14 @@ form button[type="submit"]:hover {
 }
 
 .send-btn {
-    width: 44px;
+    width: auto;
     height: 44px;
-    border-radius: 50%;
+    padding: 0 24px;
+    border-radius: 22px;
     background: linear-gradient(135deg, var(--talk-blue) 0%, var(--talk-dark-blue) 100%);
     color: white;
     border: none;
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;

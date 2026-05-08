@@ -1161,6 +1161,89 @@ app.post('/api/group/invite', async (req, res) => {
   }
 });
 
+// 更新群信息
+app.put('/api/group/:groupId', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId, groupNumber, avatar } = req.body;
+
+    if (!groupId || !userId) {
+      return res.status(400).json({ success: false, message: '参数不完整' });
+    }
+
+    // 检查用户是否是群主
+    if (DATABASE_URL) {
+      const ownerCheck = await groupMembersDB.query(
+        'SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2',
+        [groupId, userId]
+      );
+      if (ownerCheck.rows.length === 0 || ownerCheck.rows[0].role !== 'owner') {
+        return res.status(403).json({ success: false, message: '只有群主可以修改群信息' });
+      }
+    } else {
+      const ownerCheck = await promisifyDB(groupMembersDB.find).call(groupMembersDB, {
+        group_id: groupId,
+        user_id: userId
+      });
+      if (ownerCheck.length === 0 || ownerCheck[0].role !== 'owner') {
+        return res.status(403).json({ success: false, message: '只有群主可以修改群信息' });
+      }
+    }
+
+    // 如果要更新群号，检查群号是否被使用
+    if (groupNumber) {
+      if (DATABASE_URL) {
+        const existingGroup = await groupsDB.query('SELECT id FROM "groups" WHERE group_number = $1 AND id != $2', [groupNumber, groupId]);
+        if (existingGroup.rows.length > 0) {
+          return res.status(400).json({ success: false, message: '群号已被使用' });
+        }
+      } else {
+        const existingGroup = await promisifyDB(groupsDB.find).call(groupsDB, { group_number: groupNumber, id: { $ne: groupId } });
+        if (existingGroup.length > 0) {
+          return res.status(400).json({ success: false, message: '群号已被使用' });
+        }
+      }
+    }
+
+    // 更新群信息
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
+
+    if (groupNumber) {
+      updateFields.push(`group_number = $${paramIndex++}`);
+      updateValues.push(groupNumber);
+    }
+    if (avatar !== undefined) { // 允许设置为空字符串
+      updateFields.push(`avatar = $${paramIndex++}`);
+      updateValues.push(avatar);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ success: false, message: '没有要更新的内容' });
+    }
+
+    updateValues.push(groupId);
+
+    if (DATABASE_URL) {
+      await groupsDB.query(
+        `UPDATE "groups" SET ${updateFields.join(', ')} WHERE id = $${paramIndex}`,
+        updateValues
+      );
+    } else {
+      const updateData = {};
+      if (groupNumber) updateData.group_number = groupNumber;
+      if (avatar !== undefined) updateData.avatar = avatar;
+      await promisifyDB(groupsDB.update).call(groupsDB, { id: groupId }, { $set: updateData });
+    }
+
+    res.json({ success: true, message: '更新成功' });
+  } catch (error) {
+    console.error('Update group error:', error);
+    res.status(500).json({ success: false, message: '更新群信息失败' });
+  }
+});
+
 // 发送群消息
 app.post('/api/group/message', async (req, res) => {
   try {

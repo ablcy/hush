@@ -37,12 +37,12 @@ class ChatApp {
         document.getElementById('close-invite-modal').addEventListener('click', () => this.closeInviteFriendsModal());
         document.getElementById('confirm-invite-btn').addEventListener('click', () => this.inviteFriendsToGroup());
 
-        document.getElementById('group-search-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.searchGroup();
+        // 群设置相关事件
+        document.getElementById('group-avatar-preview').addEventListener('click', () => {
+            document.getElementById('group-avatar-upload-input').click();
         });
-
-        document.getElementById('join-group-btn').addEventListener('click', () => this.joinGroup());
-        document.getElementById('close-join-modal').addEventListener('click', () => this.closeJoinGroupModal());
+        document.getElementById('group-avatar-upload-input').addEventListener('change', (e) => this.handleGroupAvatarUpload(e));
+        document.getElementById('save-group-account-btn').addEventListener('click', () => this.saveGroupAccount());
 
         document.getElementById('group-back-btn').addEventListener('click', () => this.closeGroupChatView());
         document.getElementById('send-group-btn').addEventListener('click', () => this.sendGroupMessage());
@@ -292,9 +292,91 @@ class ChatApp {
         e.target.value = '';
     }
 
+    async handleGroupAvatarUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.success) {
+                // 上传头像成功，更新群
+                const updateResult = await this.fetchData(`/api/group/${this.currentGroup.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        userId: this.currentUser.id,
+                        avatar: result.imageUrl
+                    })
+                });
+                if (updateResult.success) {
+                    // 更新本地currentGroup
+                    this.currentGroup.avatar = result.imageUrl;
+                    // 更新群聊头像显示
+                    this.renderChatList();
+                    // 更新群设置弹窗中的头像
+                    const avatarPreview = document.getElementById('group-avatar-preview');
+                    avatarPreview.innerHTML = `<img src="${result.imageUrl}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                    alert('群头像更新成功');
+                } else {
+                    alert(updateResult.message || '更新失败');
+                }
+            } else {
+                alert(result.message || '上传图片失败');
+            }
+        } catch (error) {
+            console.error('Upload avatar error:', error);
+            alert('上传失败');
+        }
+
+        e.target.value = '';
+    }
+
+    async saveGroupAccount() {
+        const groupAccount = document.getElementById('group-account-input').value.trim();
+        if (!groupAccount) {
+            alert('请输入群账号');
+            return;
+        }
+
+        const result = await this.fetchData(`/api/group/${this.currentGroup.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                userId: this.currentUser.id,
+                groupNumber: groupAccount
+            })
+        });
+
+        if (result.success) {
+            // 更新本地currentGroup
+            this.currentGroup.group_number = groupAccount;
+            this.renderChatList();
+            alert('群账号更新成功');
+        } else {
+            alert(result.message || '更新失败');
+        }
+    }
+
     async showGroupInfo() {
         if (!this.currentGroup) return;
 
+        // 显示群头像
+        const avatarPreview = document.getElementById('group-avatar-preview');
+        if (this.currentGroup.avatar && this.currentGroup.avatar.trim() !== '') {
+            avatarPreview.innerHTML = `<img src="${this.currentGroup.avatar}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        } else {
+            avatarPreview.innerHTML = '群';
+        }
+
+        // 显示群账号（group_number）
+        document.getElementById('group-account-input').value = this.currentGroup.group_number || '';
+
+        // 显示群成员
         const result = await this.fetchData(`/api/group/${this.currentGroup.id}/members`);
         if (result.success) {
             this.renderGroupMembers(result.members);
@@ -1528,7 +1610,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.3.1';
+            updateTitle.textContent = t.updateLog + ' v4.4.0';
         }
 
         // 个人页
@@ -1561,11 +1643,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.3.1';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.4.0';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.3.1';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.4.0';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
