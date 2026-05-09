@@ -535,13 +535,19 @@ class ChatApp {
         const storedUser = localStorage.getItem('currentUser');
         if (storedUser) {
             this.currentUser = JSON.parse(storedUser);
-            this.showMainScreen(); // 先显示界面
+            
+            // 先显示界面，给用户即时反馈
+            this.showMainScreen();
             
             // 并行加载好友和群聊
             Promise.all([this.loadFriends(), this.loadGroups()]).then(() => {
                 this.renderChatList(); // 加载完立即渲染
-                this.loadMessages();
-                this.startPolling();
+                
+                // 消息在后台异步加载
+                setTimeout(() => {
+                    this.loadMessages();
+                    this.startPolling();
+                }, 100);
             });
         }
     }
@@ -719,10 +725,15 @@ class ChatApp {
                 this.groups = result.groups;
             }
             
-            this.renderChatList();
-            this.loadMessages();
+            // 优化顺序：先显示界面，再渲染列表，消息在后台加载
             this.showMainScreen();
-            this.startPolling();
+            this.renderChatList();
+            
+            // 消息在后台异步加载，不阻塞界面显示
+            setTimeout(() => {
+                this.loadMessages();
+                this.startPolling();
+            }, 100);
         } else {
             document.getElementById('login-error').textContent = result.message || '登录失败';
         }
@@ -1627,7 +1638,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.4.15';
+            updateTitle.textContent = t.updateLog + ' v4.4.16';
         }
 
         // 个人页
@@ -1660,11 +1671,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.4.15';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.4.16';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.4.15';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.4.16';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
