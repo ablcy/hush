@@ -317,7 +317,7 @@ class ChatApp {
                     this.renderChatList();
                     // 更新群设置弹窗中的头像
                     const avatarPreview = document.getElementById('group-avatar-preview');
-                    avatarPreview.innerHTML = `<img src="${result.imageUrl}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                    avatarPreview.innerHTML = `<img src="${this.baseUrl + result.url}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
                     alert('群头像更新成功');
                 } else {
                     alert(updateResult.message || '更新失败');
