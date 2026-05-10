@@ -282,7 +282,7 @@ form button[type="submit"]:hover {
 .chat-item {
     display: flex;
     align-items: center;
-    padding: 10px 16px;
+    padding: 8px 12px;
     background: var(--white);
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     cursor: pointer;
@@ -315,7 +315,20 @@ form button[type="submit"]:hover {
     box-shadow: var(--shadow-md);
 }
 
-.chat-item .avatar,
+.chat-item .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--talk-blue) 0%, var(--talk-dark-blue) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-right: 12px;
+}
+
 .contact-item .avatar {
     width: 58px;
     height: 58px;
