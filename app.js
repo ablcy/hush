@@ -141,12 +141,26 @@ class ChatApp {
 
     toggleTabPlusMenu() {
         const menu = document.getElementById('tab-plus-menu');
-        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        const isVisible = menu.classList.contains('visible');
+        if (isVisible) {
+            menu.classList.remove('visible');
+            setTimeout(() => {
+                menu.style.display = 'none';
+            }, 150);
+        } else {
+            menu.style.display = 'block';
+            setTimeout(() => {
+                menu.classList.add('visible');
+            }, 10);
+        }
     }
 
     closeTabPlusMenu() {
         const menu = document.getElementById('tab-plus-menu');
-        menu.style.display = 'none';
+        menu.classList.remove('visible');
+        setTimeout(() => {
+            menu.style.display = 'none';
+        }, 150);
     }
 
     async createGroup() {
@@ -1996,7 +2010,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.6.9';
+            updateTitle.textContent = t.updateLog + ' v4.7.0';
         }
 
         // 个人页
@@ -2029,11 +2043,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.6.9';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.7.0';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.6.9';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.7.0';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';

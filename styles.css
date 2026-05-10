@@ -316,7 +316,7 @@ form button[type="submit"]:hover {
 
 .tab-plus-menu {
     position: absolute;
-    top: 100%;
+    top: calc(100% + 4px);
     right: 8px;
     background: var(--white);
     border-radius: 8px;
@@ -324,6 +324,15 @@ form button[type="submit"]:hover {
     overflow: hidden;
     z-index: 100;
     min-width: 160px;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+    transform-origin: top right;
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+.tab-plus-menu.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .menu-item {
