@@ -1890,7 +1890,7 @@ class ChatApp {
             register: '注册',
             username: '账号',
             password: '密码',
-            searchPlaceholder: '搜索好友/账号',
+            searchPlaceholder: '搜索好友/群聊',
             add: '添加',
             messages: '消息',
             discover: '发现',
@@ -2010,7 +2010,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.7.2';
+            updateTitle.textContent = t.updateLog + ' v4.7.3';
         }
 
         // 个人页
@@ -2043,11 +2043,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.7.2';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.7.3';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.7.2';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.7.3';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
