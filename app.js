@@ -1223,6 +1223,9 @@ class ChatApp {
         for (const friend of this.friends) {
             const result = await this.fetchData(`/api/messages/${this.currentUser.id}/${friend.id}`);
             if (result.success) {
+                if (this.burnAfterReadingEnabled === friend.id) {
+                    continue;
+                }
                 this.messages[friend.id] = result.messages;
             }
         }
