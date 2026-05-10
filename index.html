@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="deploy-trigger" content="v4.5.3-force">
+    <meta name="deploy-trigger" content="v4.5.4-force">
     <title>Tell - 即时聊天</title>
     <link rel="icon" href="logo.jpg" type="image/jpeg">
     <link rel="stylesheet" href="styles.css">
@@ -39,7 +39,7 @@
                 </form>
 
                 <div class="version-info">
-                    <span>v4.5.3</span>
+                    <span>v4.5.4</span>
                     <span class="copyright">© 2026 Li Chengyan. All Rights Reserved.</span>
                 </div>
             </div>
@@ -129,10 +129,11 @@
                         <div class="update-info">
                             <div class="update-header" id="update-header" style="cursor: pointer;">
                                 <img src="logo.jpg" alt="Tell Logo" class="update-logo">
-                                <h3>更新日志 v4.5.3</h3>
+                                <h3>更新日志 v4.5.4</h3>
                                 <span class="toggle-arrow">▼</span>
                             </div>
                             <div class="update-content" id="update-content" style="display: none;">
+                                <div class="update-item">✨ v4.5.4: 新增好友设置功能，支持删除好友和阅后即焚功能</div>
                                 <div class="update-item">✨ v4.5.3: 新增解散群聊功能，群主可在群设置界面解散群聊</div>
                                 <div class="update-item">✨ v4.5.2: 修复退出登录后隐私泄露问题，退出时彻底清空所有用户数据和界面内容</div>
                                 <div class="update-item">✨ v4.5.1: 修复版本号同步问题，确保所有位置版本号一致</div>
@@ -220,7 +221,7 @@
                             </div>
                         </div>
                         <div class="footer-info">
-                            <p>Tell v4.5.3</p>
+                            <p>Tell v4.5.4</p>
                             <p class="copyright">© 2026 Li Chengyan. All Rights Reserved.</p>
                             <p id="uptime-display" class="uptime"></p>
                         </div>
@@ -263,7 +264,7 @@
                 <div class="chat-header">
                     <button id="back-btn" class="icon-btn">‹</button>
                     <span id="chat-friend-name">好友名称</span>
-                    <button class="icon-btn">⋮</button>
+                    <button id="friend-info-btn" class="icon-btn" onclick="app.showFriendInfo()">⋮</button>
                 </div>
                 <div id="messages-container" class="messages-container">
                     <div class="empty-chat">
@@ -338,6 +339,31 @@
                             <button id="invite-friends-btn" class="group-action-btn">邀请好友入群</button>
                             <button id="leave-group-btn" class="group-action-btn danger">退出群聊</button>
                             <button id="dissolve-group-btn" class="group-action-btn danger" style="display:none;">解散群聊</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="friend-info-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>好友设置</h3>
+                        <button id="close-friend-info-modal" class="icon-btn">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="friend-info-avatar" class="avatar" style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); display: flex; align-items: center; justify-content: center; color: white; font-size: 32px; margin: 20px auto;">友</div>
+                        <div id="friend-info-name" style="text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 20px;">好友名称</div>
+                        <div class="friend-settings-section">
+                            <div class="setting-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                <span>阅后即焚</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="burn-after-reading-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="friend-actions" style="margin-top: 20px;">
+                            <button id="delete-friend-btn" class="friend-action-btn danger">删除好友</button>
                         </div>
                     </div>
                 </div>

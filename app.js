@@ -15,6 +15,7 @@ class ChatApp {
         this.groups = [];
         this.currentGroup = null;
         this.groupMessages = {};
+        this.burnAfterReadingEnabled = null;
         this.init();
     }
 
@@ -59,6 +60,11 @@ class ChatApp {
 
         document.getElementById('leave-group-btn').addEventListener('click', () => this.leaveGroup());
         document.getElementById('dissolve-group-btn').addEventListener('click', () => this.dissolveGroup());
+
+        // 好友设置相关事件
+        document.getElementById('close-friend-info-modal').addEventListener('click', () => this.closeFriendInfoModal());
+        document.getElementById('delete-friend-btn').addEventListener('click', () => this.deleteFriend());
+        document.getElementById('burn-after-reading-toggle').addEventListener('change', (e) => this.toggleBurnAfterReading(e));
 
         // 新增：合并搜索入口的加入群聊按钮
         document.getElementById('confirm-join-group-btn').addEventListener('click', () => this.confirmJoinGroup());
@@ -149,6 +155,70 @@ class ChatApp {
     closeGroupChatView() {
         document.getElementById('group-chat-view').style.display = 'none';
         this.currentGroup = null;
+        this.renderChatList();
+    }
+
+    showFriendInfo() {
+        if (!this.currentFriend) return;
+
+        const avatarPreview = document.getElementById('friend-info-avatar');
+        if (this.currentFriend.avatar && this.currentFriend.avatar.trim() !== '') {
+            avatarPreview.innerHTML = `<img src="${this.currentFriend.avatar}" alt="" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        } else {
+            avatarPreview.innerHTML = this.currentFriend.username.charAt(0);
+        }
+
+        document.getElementById('friend-info-name').textContent = this.currentFriend.username;
+
+        const burnToggle = document.getElementById('burn-after-reading-toggle');
+        burnToggle.checked = this.burnAfterReadingEnabled === this.currentFriend.id;
+
+        document.getElementById('friend-info-modal').style.display = 'flex';
+    }
+
+    closeFriendInfoModal() {
+        document.getElementById('friend-info-modal').style.display = 'none';
+    }
+
+    async deleteFriend() {
+        if (!this.currentFriend) return;
+        if (!confirm(`确定要删除好友 ${this.currentFriend.username} 吗？`)) return;
+
+        const result = await this.fetchData('/api/friend/delete', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId: this.currentUser.id,
+                friendId: this.currentFriend.id
+            })
+        });
+
+        if (result.success) {
+            this.friends = this.friends.filter(f => f.id !== this.currentFriend.id);
+            delete this.messages[this.currentFriend.id];
+            this.closeChatView();
+        } else {
+            alert(result.message || '删除失败');
+        }
+    }
+
+    toggleBurnAfterReading(e) {
+        if (!this.currentFriend) return;
+
+        if (e.target.checked) {
+            this.burnAfterReadingEnabled = this.currentFriend.id;
+        } else {
+            this.burnAfterReadingEnabled = null;
+        }
+    }
+
+    closeChatView() {
+        if (this.burnAfterReadingEnabled === this.currentFriend.id) {
+            const container = document.getElementById('messages-container');
+            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
+            delete this.messages[this.currentFriend.id];
+        }
+        document.getElementById('chat-view').style.display = 'none';
+        this.currentFriend = null;
         this.renderChatList();
     }
 
@@ -1826,7 +1896,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.5.3';
+            updateTitle.textContent = t.updateLog + ' v4.5.4';
         }
 
         // 个人页
@@ -1859,11 +1929,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.5.3';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.5.4';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.5.3';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.5.4';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';

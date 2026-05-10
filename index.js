@@ -565,6 +565,35 @@ app.post('/api/add-friend', async (req, res) => {
   }
 });
 
+app.post('/api/friend/delete', async (req, res) => {
+  const { userId, friendId } = req.body;
+
+  if (!userId || !friendId) {
+    return res.status(400).json({ success: false, message: '参数错误' });
+  }
+
+  try {
+    if (DATABASE_URL) {
+      await friendshipsDB.query(
+        'DELETE FROM friendships WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)',
+        [userId, friendId]
+      );
+    } else {
+      await promisifyDB(friendshipsDB.remove).call(friendshipsDB, {
+        $or: [
+          { user_id: userId, friend_id: friendId },
+          { user_id: friendId, friend_id: userId }
+        ]
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete friend error:', error);
+    res.status(500).json({ success: false, message: '删除失败' });
+  }
+});
+
 app.get('/api/friends/:userId', async (req, res) => {
   const { userId } = req.params;
 
