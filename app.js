@@ -388,6 +388,18 @@ class ChatApp {
         if (result.success) {
             this.renderGroupMembers(result.members);
         }
+
+        // 判断当前用户是否是群主，显示/隐藏解散群聊按钮
+        const dissolveBtn = document.getElementById('dissolve-group-btn');
+        const leaveBtn = document.getElementById('leave-group-btn');
+        if (this.currentGroup.role === 'owner') {
+            dissolveBtn.style.display = 'block';
+            leaveBtn.style.display = 'none';
+        } else {
+            dissolveBtn.style.display = 'none';
+            leaveBtn.style.display = 'block';
+        }
+
         document.getElementById('group-info-modal').style.display = 'flex';
     }
 
@@ -1814,7 +1826,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.5.2';
+            updateTitle.textContent = t.updateLog + ' v4.5.3';
         }
 
         // 个人页
@@ -1847,11 +1859,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.5.2';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.5.3';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.5.2';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.5.3';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
