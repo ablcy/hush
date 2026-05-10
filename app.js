@@ -15,21 +15,31 @@ class ChatApp {
         this.groups = [];
         this.currentGroup = null;
         this.groupMessages = {};
-        this.burnAfterReadingEnabled = this.loadBurnAfterReadingSetting();
+        this.burnAfterReadingFriendId = null;
+        this.burnAfterReadingGroupId = null;
+        this.loadBurnAfterReadingSetting();
         this.init();
     }
 
     loadBurnAfterReadingSetting() {
         try {
             const saved = localStorage.getItem('burnAfterReading');
-            return saved ? JSON.parse(saved) : null;
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.burnAfterReadingFriendId = data.friendId || null;
+                this.burnAfterReadingGroupId = data.groupId || null;
+            }
         } catch {
-            return null;
+            this.burnAfterReadingFriendId = null;
+            this.burnAfterReadingGroupId = null;
         }
     }
 
-    saveBurnAfterReadingSetting(friendId) {
-        localStorage.setItem('burnAfterReading', JSON.stringify(friendId));
+    saveBurnAfterReadingSetting() {
+        localStorage.setItem('burnAfterReading', JSON.stringify({
+            friendId: this.burnAfterReadingFriendId,
+            groupId: this.burnAfterReadingGroupId
+        }));
     }
 
     init() {
@@ -78,6 +88,9 @@ class ChatApp {
         document.getElementById('close-friend-info-modal').addEventListener('click', () => this.closeFriendInfoModal());
         document.getElementById('delete-friend-btn').addEventListener('click', () => this.deleteFriend());
         document.getElementById('burn-after-reading-toggle').addEventListener('change', (e) => this.toggleBurnAfterReading(e));
+
+        // 群聊阅后即焚事件
+        document.getElementById('group-burn-after-reading-toggle').addEventListener('change', (e) => this.toggleGroupBurnAfterReading(e));
 
         // 新增：合并搜索入口的加入群聊按钮
         document.getElementById('confirm-join-group-btn').addEventListener('click', () => this.confirmJoinGroup());
@@ -143,6 +156,12 @@ class ChatApp {
         document.getElementById('group-chat-view').style.display = 'flex';
         document.getElementById('group-chat-name').textContent = group.name;
 
+        // 检查阅后即焚状态
+        const shouldBurn = this.burnAfterReadingGroupId === groupId;
+        if (shouldBurn) {
+            this.groupMessages[groupId] = [];
+        }
+
         // 立即显示预加载的消息
         this.renderGroupMessages();
 
@@ -152,10 +171,12 @@ class ChatApp {
             this.currentGroupMembers = membersResult.members;
         }
 
-        // 静默更新消息（在后台更新）
-        this.loadGroupMessages(groupId).then(() => {
-            this.renderGroupMessages();
-        });
+        // 如果没有开启阅后即焚，才加载消息
+        if (!shouldBurn) {
+            this.loadGroupMessages(groupId).then(() => {
+                this.renderGroupMessages();
+            });
+        }
     }
 
     async loadGroupMessages(groupId) {
@@ -166,6 +187,12 @@ class ChatApp {
     }
 
     closeGroupChatView() {
+        const shouldBurn = this.currentGroup && this.burnAfterReadingGroupId === this.currentGroup.id;
+        if (shouldBurn) {
+            const container = document.getElementById('group-messages-container');
+            container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
+            delete this.groupMessages[this.currentGroup.id];
+        }
         document.getElementById('group-chat-view').style.display = 'none';
         this.currentGroup = null;
         this.renderChatList();
@@ -184,7 +211,7 @@ class ChatApp {
         document.getElementById('friend-info-name').textContent = this.currentFriend.username;
 
         const burnToggle = document.getElementById('burn-after-reading-toggle');
-        burnToggle.checked = this.burnAfterReadingEnabled === this.currentFriend.id;
+        burnToggle.checked = this.burnAfterReadingFriendId === this.currentFriend.id;
 
         document.getElementById('friend-info-modal').style.display = 'flex';
     }
@@ -218,11 +245,22 @@ class ChatApp {
         if (!this.currentFriend) return;
 
         if (e.target.checked) {
-            this.burnAfterReadingEnabled = this.currentFriend.id;
+            this.burnAfterReadingFriendId = this.currentFriend.id;
         } else {
-            this.burnAfterReadingEnabled = null;
+            this.burnAfterReadingFriendId = null;
         }
-        this.saveBurnAfterReadingSetting(this.burnAfterReadingEnabled);
+        this.saveBurnAfterReadingSetting();
+    }
+
+    toggleGroupBurnAfterReading(e) {
+        if (!this.currentGroup) return;
+
+        if (e.target.checked) {
+            this.burnAfterReadingGroupId = this.currentGroup.id;
+        } else {
+            this.burnAfterReadingGroupId = null;
+        }
+        this.saveBurnAfterReadingSetting();
     }
 
     renderGroupMessages() {
@@ -455,6 +493,10 @@ class ChatApp {
 
         // 显示群账号（group_number）
         document.getElementById('group-account-input').value = this.currentGroup.group_number || '';
+
+        // 设置阅后即焚开关状态
+        const burnToggle = document.getElementById('group-burn-after-reading-toggle');
+        burnToggle.checked = this.burnAfterReadingGroupId === this.currentGroup.id;
 
         // 显示群成员
         const result = await this.fetchData(`/api/group/${this.currentGroup.id}/members`);
@@ -1280,7 +1322,7 @@ class ChatApp {
         document.getElementById('chat-friend-name').textContent = friend.username;
         document.getElementById('chat-view').style.display = 'flex';
         
-        const shouldBurn = this.burnAfterReadingEnabled === friendId;
+        const shouldBurn = this.burnAfterReadingFriendId === friendId;
         if (shouldBurn) {
             this.messages[friendId] = [];
         }
@@ -1295,7 +1337,7 @@ class ChatApp {
     }
 
     closeChatView() {
-        const shouldBurn = this.currentFriend && this.burnAfterReadingEnabled === this.currentFriend.id;
+        const shouldBurn = this.currentFriend && this.burnAfterReadingFriendId === this.currentFriend.id;
         if (shouldBurn) {
             const container = document.getElementById('messages-container');
             container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
@@ -1914,7 +1956,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.5.9';
+            updateTitle.textContent = t.updateLog + ' v4.6.0';
         }
 
         // 个人页
@@ -1947,11 +1989,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.5.9';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.6.0';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.5.9';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.6.0';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';

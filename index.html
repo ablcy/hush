@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="deploy-trigger" content="v4.5.6-force">
+    <meta name="deploy-trigger" content="v4.6.0-force">
     <title>Tell - 即时聊天</title>
     <link rel="icon" href="logo.jpg" type="image/jpeg">
     <link rel="stylesheet" href="styles.css">
@@ -39,7 +39,7 @@
                 </form>
 
                 <div class="version-info">
-                    <span>v4.5.9</span>
+                    <span>v4.6.0</span>
                     <span class="copyright">© 2026 Li Chengyan. All Rights Reserved.</span>
                 </div>
             </div>
@@ -129,11 +129,11 @@
                         <div class="update-info">
                             <div class="update-header" id="update-header" style="cursor: pointer;">
                                 <img src="logo.jpg" alt="Tell Logo" class="update-logo">
-                                <h3>更新日志 v4.5.8</h3>
+                                <h3>更新日志 v4.6.0</h3>
                                 <span class="toggle-arrow">▼</span>
                             </div>
                             <div class="update-content" id="update-content" style="display: none;">
-                                <div class="update-item">✨ v4.5.9: 修复轮询重新加载消息问题，阅后即焚开启后不加载消息到内存</div>
+                                <div class="update-item">✨ v4.6.0: 群聊设置新增阅后即焚功能，与好友聊天阅后即焚效果一致</div>
                                 <div class="update-item">✨ v4.5.4: 新增好友设置功能，支持删除好友和阅后即焚功能</div>
                                 <div class="update-item">✨ v4.5.3: 新增解散群聊功能，群主可在群设置界面解散群聊</div>
                                 <div class="update-item">✨ v4.5.2: 修复退出登录后隐私泄露问题，退出时彻底清空所有用户数据和界面内容</div>
@@ -222,7 +222,7 @@
                             </div>
                         </div>
                         <div class="footer-info">
-                            <p>Tell v4.5.6</p>
+                            <p>Tell v4.6.0</p>
                             <p class="copyright">© 2026 Li Chengyan. All Rights Reserved.</p>
                             <p id="uptime-display" class="uptime"></p>
                         </div>
@@ -333,6 +333,13 @@
                                 <span>群账号</span>
                                 <input type="text" id="group-account-input" placeholder="修改群账号" style="width: 60%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
                                 <button id="save-group-account-btn" class="icon-btn" style="background: var(--talk-blue); color: white; width: auto; padding: 8px 16px; border-radius: 12px; font-size: 0.9rem;">保存</button>
+                            </div>
+                            <div class="setting-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                <span>阅后即焚</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="group-burn-after-reading-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </div>
                         </div>
                         <div id="group-members-list" class="group-members-list" style="margin-top: 20px;"></div>
