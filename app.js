@@ -2168,7 +2168,7 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.9.4';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.9.7';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
