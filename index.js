@@ -278,12 +278,17 @@ app.post('/api/register', async (req, res) => {
       });
     }
 
-    await sendWelcomeMessage(userId, username);
+    try {
+      await sendWelcomeMessage(userId, username);
+    } catch (welcomeError) {
+      console.error('Send welcome message error:', welcomeError);
+    }
 
     res.json({ success: true, user: { id: userId, username, avatar: null, nickname: '' } });
   } catch (error) {
     console.error('Register error:', error);
-    res.status(500).json({ success: false, message: '注册失败' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ success: false, message: `注册失败: ${error.message}` });
   }
 });
 
@@ -460,7 +465,8 @@ app.post('/api/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ success: false, message: '登录失败' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ success: false, message: `登录失败: ${error.message}` });
   }
 });
 
