@@ -48,6 +48,7 @@ const SALT_ROUNDS = 10;
 
 let ADMIN_PASSWORD = 'admin';
 const ADMIN_USERNAME = 'admin';
+const ADMIN_CONFIG_KEY = 'admin_password';
 
 let adminTokens = [];
 
@@ -72,6 +73,41 @@ function adminAuthMiddleware(req, res, next) {
     return res.status(401).json({ success: false, message: '未授权访问，请先登录' });
   }
   next();
+}
+
+async function initAdminPassword() {
+  if (DATABASE_URL) {
+    try {
+      await usersDB.query(`
+        CREATE TABLE IF NOT EXISTS config (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      `);
+      
+      const result = await usersDB.query('SELECT value FROM config WHERE key = $1', [ADMIN_CONFIG_KEY]);
+      if (result.rows.length > 0) {
+        ADMIN_PASSWORD = result.rows[0].value;
+        console.log('Admin password loaded from database');
+      } else {
+        await usersDB.query('INSERT INTO config (key, value) VALUES ($1, $2)', [ADMIN_CONFIG_KEY, ADMIN_PASSWORD]);
+        console.log('Admin password initialized with default');
+      }
+    } catch (error) {
+      console.error('Init admin password error:', error);
+    }
+  }
+}
+
+async function saveAdminPassword(password) {
+  if (DATABASE_URL) {
+    try {
+      await usersDB.query('UPDATE config SET value = $1 WHERE key = $2', [password, ADMIN_CONFIG_KEY]);
+      console.log('Admin password saved to database');
+    } catch (error) {
+      console.error('Save admin password error:', error);
+    }
+  }
 }
 
 let usersDB, friendshipsDB, messagesDB, groupsDB, groupMembersDB, groupMessagesDB;
@@ -235,7 +271,9 @@ async function initDB() {
   }
 }
 
-initDB();
+initDB().then(() => {
+  initAdminPassword();
+});
 
 function promisifyDB(method) {
   return function(query, options = {}) {
@@ -905,7 +943,7 @@ app.post('/api/admin/verify', (req, res) => {
   }
 });
 
-app.post('/api/admin/change-password', (req, res) => {
+app.post('/api/admin/change-password', async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   
   if (!oldPassword || !newPassword) {
@@ -917,6 +955,7 @@ app.post('/api/admin/change-password', (req, res) => {
   }
 
   ADMIN_PASSWORD = newPassword;
+  await saveAdminPassword(newPassword);
   res.json({ success: true, message: '密码修改成功' });
 });
 

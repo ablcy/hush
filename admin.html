@@ -120,59 +120,47 @@
                     <button id="toggle-changelog-btn" class="btn btn-secondary">▼ 展开</button>
                 </div>
                 <div class="changelog-content" id="changelog-content" style="display: none;">
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.9.2 202605111538</div>
-                        <ul class="changelog-list">
-                            <li>登录提示用户不存在/密码错误</li>
-                            <li>密码修改后用户5秒内强制下线</li>
-                            <li>修复管理员密码修改失败问题</li>
-                            <li>解除密码字符限制</li>
-                            <li>管理后台添加折叠式更新日志</li>
-                        </ul>
-                    </div>
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.9.1 202605111513</div>
-                        <ul class="changelog-list">
-                            <li>后台管理添加密码验证（默认密码admin）</li>
-                            <li>支持修改管理员密码和所有用户密码</li>
-                            <li>优化移动端显示</li>
-                        </ul>
-                    </div>
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.9.0 202605111455</div>
-                        <ul class="changelog-list">
-                            <li>移除独立admin登录系统</li>
-                            <li>在发现界面添加后台管理入口</li>
-                        </ul>
-                    </div>
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.8.9 202605111445</div>
-                        <ul class="changelog-list">
-                            <li>为所有现有用户添加自己为好友</li>
-                            <li>通讯录中显示"（我）"标识</li>
-                        </ul>
-                    </div>
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.8.8 202605111438</div>
-                        <ul class="changelog-list">
-                            <li>用户注册后自动添加自己为好友</li>
-                            <li>消息界面显示"（我）"标识</li>
-                            <li>无法删除自己</li>
-                        </ul>
-                    </div>
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.8.7 202605111425</div>
-                        <ul class="changelog-list">
-                            <li>注册用户名长度限制改为1个字符</li>
-                        </ul>
-                    </div>
-                    <div class="changelog-item">
-                        <div class="changelog-version">✨ v4.8.6 202605111415</div>
-                        <ul class="changelog-list">
-                            <li>修复注册和登录问题</li>
-                            <li>添加数据库修复API</li>
-                        </ul>
-                    </div>
+                    <div class="update-item">✨ v4.9.2 202605111538: 登录提示用户不存在/密码错误，密码修改后用户5秒内强制下线，管理员密码持久化存储</div>
+                    <div class="update-item">✨ v4.9.1 202605111513: 后台管理添加密码验证（默认密码admin），支持修改管理员密码和所有用户密码，优化移动端显示</div>
+                    <div class="update-item">✨ v4.9.0 202605111455: 移除独立admin登录系统，在发现界面添加后台管理入口，无需密码直接访问</div>
+                    <div class="update-item">✨ v4.8.9 202605111445: 为所有现有用户添加自己为好友，通讯录中也显示"（我）"标识</div>
+                    <div class="update-item">✨ v4.8.8 202605111438: 用户注册后自动添加自己为好友，消息界面显示"（我）"标识，无法删除自己</div>
+                    <div class="update-item">✨ v4.8.7 202605111425: 注册用户名长度限制改为1个字符即可注册</div>
+                    <div class="update-item">✨ v4.8.6 202605111415: 修复注册和登录问题，添加数据库修复API，添加详细错误日志</div>
+                    <div class="update-item">✨ v4.8.5 202605111515: 发现界面语言切换按钮文字改为"中文/English"</div>
+                    <div class="update-item">✨ v4.8.4 202605111500: 更换Logo图片，使用新的tell2.jpg替换所有logo图片</div>
+                    <div class="update-item">✨ v4.8.3 202605111450: 网站标题改为Tell，副标题改为倾听耳边语；进一步优化登录速度，验证成功后立刻显示主页</div>
+                    <div class="update-item">✨ v4.8.2: 登录界面标题改为Tell·听耳；优化登录速度，验证密码正确后立刻进入主页，消息和通讯录列表立刻显示</div>
+                    <div class="update-item">✨ v4.8.1: 修复登录逻辑，验证密码正确后再进入主页；网站标题改为Tell·听耳，副标题改为倾听耳边语，细说心底言</div>
+                    <div class="update-item">✨ v4.8.0: 修复英文模式，添加缺失的翻译项（通讯录、添加好友、创建群聊、发起群聊、我的群聊、好友列表等）</div>
+                    <div class="update-item">✨ v4.7.9: 加号菜单移至加号左侧，通讯录和发现界面加号功能与消息界面一致</div>
+                    <div class="update-item">✨ v4.7.8: 加号菜单改为微信风格，深色背景，紧贴按钮下方</div>
+                    <div class="update-item">✨ v4.7.7: 优化加号菜单位置，紧贴按钮下方</div>
+                    <div class="update-item">✨ v4.7.6: 通讯录添加好友和创建群聊改为竖着排列，类似好友列表样式</div>
+                    <div class="update-item">✨ v4.7.5: 通讯录群聊列表和好友列表间距与消息界面统一（8px 12px）</div>
+                    <div class="update-item">✨ v4.7.4: 优化加号菜单位置，紧贴按钮下方</div>
+                    <div class="update-item">✨ v4.7.3: 修复JavaScript语言包中的搜索框占位符</div>
+                    <div class="update-item">✨ v4.7.2: 强制重新部署，确保搜索框和菜单位置更新</div>
+                    <div class="update-item">✨ v4.7.1: 调整加号菜单位置，更接近微信设计风格</div>
+                    <div class="update-item">✨ v4.7.0: 搜索框改为搜索好友/群聊，优化加号菜单位置和动画效果</div>
+                    <div class="update-item">✨ v4.5.4: 新增好友设置功能，支持删除好友和阅后即焚功能</div>
+                    <div class="update-item">✨ v4.5.3: 新增解散群聊功能，群主可在群设置界面解散群聊</div>
+                    <div class="update-item">✨ v4.5.2: 修复退出登录后隐私泄露问题，退出时彻底清空所有用户数据和界面内容</div>
+                    <div class="update-item">✨ v4.5.1: 修复版本号同步问题，确保所有位置版本号一致</div>
+                    <div class="update-item">✨ v4.4.23: 添加通讯录导航栏，参考微信图标设计，实现点击填充效果</div>
+                    <div class="update-item">✨ v4.4.21: 群聊界面优化，输入框与好友聊天一致，三点按钮移至右上角</div>
+                    <div class="update-item">✨ v4.4.20: 极致优化渲染性能，直接一次性字符串拼接渲染，最快显示速度</div>
+                    <div class="update-item">✨ v4.4.19: 极致优化列表渲染，使用requestAnimationFrame分批渲染，确保1秒内显示好友和群聊</div>
+                    <div class="update-item">✨ v4.4.18: 使用DocumentFragment优化列表渲染，大幅提升好友和群聊显示速度</div>
+                    <div class="update-item">✨ v4.4.17: 极致优化登录体验，立即切换界面+骨架屏，消除3秒卡顿</div>
+                    <div class="update-item">✨ v4.4.16: 优化登录流程，先显示界面再加载消息，实现秒开体验</div>
+                    <div class="update-item">✨ v4.4.15: 登录API批量返回好友和群聊数据，实现即时显示</div>
+                    <div class="update-item">✨ v4.4.14: 修复登录后群聊列表加载延迟问题（并行加载好友和群聊）</div>
+                    <div class="update-item">✨ v4.4.13: 修复群头像版本更新后被重置问题（参照好友头像逻辑，使用Base64存储）</div>
+                    <div class="update-item">✨ v4.4.12: 修改群账号时同时更新群昵称，统一称为账号</div>
+                    <div class="update-item">✨ v4.4.11: 用户名长度限制改为至少2个字符</div>
+                    <div class="update-item">✨ v4.4.10: 配置Xata PostgreSQL数据库连接</div>
+                    <div class="update-item">✨ v4.4.7: 修复群头像预览不显示的问题（按照好友头像逻辑修复）</div>
                 </div>
             </section>
         </main>
