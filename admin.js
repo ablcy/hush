@@ -174,11 +174,6 @@ class AdminPanel {
             return;
         }
 
-        if (newPassword.length < 6) {
-            errorElement.textContent = '密码至少需要6个字符';
-            return;
-        }
-
         try {
             const response = await fetch(`${this.baseUrl}/api/admin/change-password`, {
                 method: 'POST',

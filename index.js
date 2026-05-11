@@ -916,10 +916,6 @@ app.post('/api/admin/change-password', (req, res) => {
     return res.status(401).json({ success: false, message: '原密码错误' });
   }
 
-  if (newPassword.length < 6) {
-    return res.status(400).json({ success: false, message: '密码至少需要6个字符' });
-  }
-
   ADMIN_PASSWORD = newPassword;
   res.json({ success: true, message: '密码修改成功' });
 });
