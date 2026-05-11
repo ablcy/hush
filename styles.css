@@ -1361,37 +1361,38 @@ body.dark-mode .toggle-slider {
     box-shadow: none;
 }
 
-.contacts-actions {
-    display: flex;
-    gap: 20px;
-    padding: 16px;
+.contacts-actions-list {
     background: var(--white);
 }
 
-.contact-action-item {
+.contacts-actions-list .contact-item {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    padding: 8px 12px;
+    background: var(--white);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     cursor: pointer;
-    flex: 1;
+    transition: background 0.2s;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
 }
 
-.contact-action-item .action-icon {
-    width: 48px;
-    height: 48px;
+.contacts-actions-list .contact-item:hover {
+    background: #FAFAFA;
+}
+
+.contacts-actions-list .contact-item .avatar {
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
+    margin-right: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.contact-action-item span {
-    font-size: 0.8rem;
-    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
 .contacts-list {

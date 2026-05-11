@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="deploy-trigger" content="v4.7.5-force">
+    <meta name="deploy-trigger" content="v4.7.6-force">
     <title>Tell - 即时聊天</title>
     <link rel="icon" href="logo.png" type="image/png">
     <link rel="stylesheet" href="styles.css">
@@ -39,7 +39,7 @@
                 </form>
 
                 <div class="version-info">
-                    <span>v4.7.5</span>
+                    <span>v4.7.6</span>
                     <span class="copyright">© 2026 Li Chengyan. All Rights Reserved.</span>
                 </div>
             </div>
@@ -93,14 +93,18 @@
                         </div>
                         <div class="contacts-header">
                             <div class="contacts-section">
-                                <div class="contacts-actions">
-                                    <div class="contact-action-item" id="contacts-add-friend-btn">
-                                        <div class="action-icon" style="background: linear-gradient(135deg, #00D95E, #00B84D);">+</div>
-                                        <span>添加好友</span>
+                                <div class="contacts-actions-list">
+                                    <div class="contact-item" id="contacts-add-friend-btn">
+                                        <div class="avatar" style="background: linear-gradient(135deg, #00D95E, #00B84D);">+</div>
+                                        <div class="contact-info">
+                                            <div class="contact-name">添加好友</div>
+                                        </div>
                                     </div>
-                                    <div class="contact-action-item" id="contacts-create-group-btn">
-                                        <div class="action-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">+</div>
-                                        <span>创建群聊</span>
+                                    <div class="contact-item" id="contacts-create-group-btn">
+                                        <div class="avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">👥</div>
+                                        <div class="contact-info">
+                                            <div class="contact-name">创建群聊</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -146,10 +150,11 @@
                         <div class="update-info">
                             <div class="update-header" id="update-header" style="cursor: pointer;">
                                 <img src="logo.jpg" alt="Tell Logo" class="update-logo">
-                                <h3>更新日志 v4.7.5</h3>
+                                <h3>更新日志 v4.7.6</h3>
                                 <span class="toggle-arrow">▼</span>
                             </div>
                             <div class="update-content" id="update-content" style="display: none;">
+                                <div class="update-item">✨ v4.7.6: 通讯录添加好友和创建群聊改为竖着排列，类似好友列表样式</div>
                                 <div class="update-item">✨ v4.7.5: 通讯录群聊列表和好友列表间距与消息界面统一（8px 12px）</div>
                                 <div class="update-item">✨ v4.7.4: 优化加号菜单位置，紧贴按钮下方</div>
                                 <div class="update-item">✨ v4.7.3: 修复JavaScript语言包中的搜索框占位符</div>
@@ -244,7 +249,7 @@
                             </div>
                         </div>
                         <div class="footer-info">
-                            <p>Tell v4.7.5</p>
+                            <p>Tell v4.7.6</p>
                             <p class="copyright">© 2026 Li Chengyan. All Rights Reserved.</p>
                             <p id="uptime-display" class="uptime"></p>
                         </div>
