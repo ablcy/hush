@@ -317,7 +317,7 @@ form button[type="submit"]:hover {
 .tab-plus-menu {
     position: absolute;
     top: calc(100% + 6px);
-    right: 8px;
+    right: calc(100% + 8px);
     margin-top: 0;
     background: #323232;
     border-radius: 6px;
@@ -327,7 +327,7 @@ form button[type="submit"]:hover {
     min-width: 160px;
     opacity: 0;
     transform: translateY(-4px) scale(0.95);
-    transform-origin: top right;
+    transform-origin: top left;
     transition: opacity 0.15s ease-out, transform 0.15s ease-out;
 }
 
