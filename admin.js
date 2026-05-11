@@ -51,7 +51,7 @@ class AdminPanel {
         this.bindEvents();
         this.loadStats();
         this.loadUsers();
-        this.addLog('Tell Admin v1.1.0 启动成功', '系统');
+        this.addLog('Tell Admin v4.9.3 启动成功', '系统');
     }
 
     bindEvents() {
@@ -59,6 +59,7 @@ class AdminPanel {
         document.getElementById('search-user-search').addEventListener('input', (e) => this.searchUsers(e.target.value));
         document.getElementById('clear-logs-btn').addEventListener('click', () => this.clearLogs());
         document.getElementById('change-pwd-btn').addEventListener('click', () => this.showChangePasswordModal());
+        document.getElementById('toggle-changelog-btn').addEventListener('click', () => this.toggleChangelog());
         
         document.getElementById('close-modal-btn').addEventListener('click', () => this.closeModal());
         document.getElementById('cancel-btn').addEventListener('click', () => this.closeModal());
@@ -70,6 +71,19 @@ class AdminPanel {
         document.getElementById('close-user-pwd-modal-btn').addEventListener('click', () => this.closeChangeUserPasswordModal());
         document.getElementById('cancel-user-pwd-btn').addEventListener('click', () => this.closeChangeUserPasswordModal());
         document.getElementById('save-user-pwd-btn').addEventListener('click', () => this.changeUserPassword());
+    }
+
+    toggleChangelog() {
+        const content = document.getElementById('changelog-content');
+        const button = document.getElementById('toggle-changelog-btn');
+        
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            button.textContent = '▲ 收起';
+        } else {
+            content.style.display = 'none';
+            button.textContent = '▼ 展开';
+        }
     }
 
     async loadStats() {

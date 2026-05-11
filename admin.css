@@ -442,6 +442,17 @@ body {
     font-size: 0.9rem;
 }
 
+.login-version {
+    display: inline-block;
+    background: rgba(0,122,255,0.1);
+    color: var(--talk-blue);
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
 .form-group {
     margin-bottom: 16px;
 }
@@ -570,6 +581,65 @@ body {
     .password-header h1 {
         font-size: 1.4rem;
     }
+}
+
+.changelog-section {
+    margin-top: 20px;
+}
+
+.changelog-header {
+    cursor: pointer;
+}
+
+.changelog-header:hover {
+    background: #FAFAFA;
+}
+
+.changelog-content {
+    background: var(--white);
+    padding: 16px 20px;
+    border-radius: 0 0 12px 12px;
+    box-shadow: var(--card-shadow);
+}
+
+.changelog-item {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.changelog-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.changelog-version {
+    font-weight: 700;
+    color: var(--talk-blue);
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.changelog-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.changelog-list li {
+    padding: 6px 0;
+    padding-left: 20px;
+    position: relative;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.changelog-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--talk-green);
+    font-weight: 600;
 }
 
 @media (max-width: 480px) {

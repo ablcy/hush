@@ -14,6 +14,7 @@
                 <img src="logo.jpg" alt="Tell Logo" class="password-logo">
                 <h1>Tell Admin</h1>
                 <p>请输入管理员密码</p>
+                <span class="login-version">v4.9.3</span>
             </div>
             
             <form id="password-form">
@@ -38,7 +39,7 @@
                 </div>
                 <div class="header-right">
                     <button id="change-pwd-btn" class="btn btn-secondary">修改密码</button>
-                    <span class="version-badge">v1.1.0</span>
+                    <span class="version-badge">v4.9.3</span>
                     <a href="/" class="back-link">← 返回应用</a>
                 </div>
             </div>
@@ -108,7 +109,41 @@
                 <div class="logs-container" id="logs-container">
                     <div class="log-entry">
                         <span class="log-time">[系统]</span>
-                        <span class="log-message">Tell Admin v1.1.0 启动成功</span>
+                        <span class="log-message">Tell Admin v4.9.3 启动成功</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="changelog-section">
+                <div class="section-header changelog-header">
+                    <h2>📝 更新日志</h2>
+                    <button id="toggle-changelog-btn" class="btn btn-secondary">▼ 展开</button>
+                </div>
+                <div class="changelog-content" id="changelog-content" style="display: none;">
+                    <div class="changelog-item">
+                        <div class="changelog-version">v4.9.3 202605111530</div>
+                        <ul class="changelog-list">
+                            <li>修复管理员密码修改失败问题</li>
+                            <li>解除密码字符限制</li>
+                            <li>添加折叠式更新日志显示</li>
+                            <li>优化管理后台移动端显示</li>
+                        </ul>
+                    </div>
+                    <div class="changelog-item">
+                        <div class="changelog-version">v4.9.2 202605111400</div>
+                        <ul class="changelog-list">
+                            <li>实现密码修改后用户5秒内强制下线功能</li>
+                            <li>在线上环境创建测试账号</li>
+                            <li>修复用户密码修改时密码版本号更新问题</li>
+                        </ul>
+                    </div>
+                    <div class="changelog-item">
+                        <div class="changelog-version">v4.9.1 202605111200</div>
+                        <ul class="changelog-list">
+                            <li>整合后台管理系统到发现界面</li>
+                            <li>添加管理员密码验证功能</li>
+                            <li>新增修改所有用户密码功能</li>
+                        </ul>
                     </div>
                 </div>
             </section>
