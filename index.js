@@ -129,13 +129,19 @@ async function initDB() {
           username TEXT UNIQUE NOT NULL,
           password TEXT NOT NULL,
           avatar TEXT,
+          nickname TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
 
-      // 添加avatar列（如果不存在）
+      // 添加缺失的列（如果不存在）
       try {
         await usersDB.query('ALTER TABLE users ADD COLUMN avatar TEXT');
+      } catch (e) {
+        // 列已存在，忽略错误
+      }
+      
+      try {
         await usersDB.query('ALTER TABLE users ADD COLUMN nickname TEXT');
       } catch (e) {
         // 列已存在，忽略错误
