@@ -1907,7 +1907,7 @@ class ChatApp {
             me: '个人',
             shareApp: '分享应用',
             darkMode: '深色模式',
-            language: '英文模式',
+            language: '中文/English',
             updateLog: '更新日志',
             changeAccount: '修改账号',
             changeAvatar: '修改头像',
@@ -2056,7 +2056,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.8.4';
+            updateTitle.textContent = t.updateLog + ' v4.8.5';
         }
 
         // 个人页
@@ -2089,11 +2089,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.8.4';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.8.5';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.8.4';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.8.5';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
