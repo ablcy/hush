@@ -1342,11 +1342,16 @@ body.dark-mode .toggle-slider {
 
 .contacts-group-list .contact-item,
 .contacts-friend-list .contact-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--white);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: background 0.2s;
     margin: 0;
     border-radius: 0;
     box-shadow: none;
-    border-bottom: 1px solid var(--border-color);
-    padding: 12px 16px;
 }
 
 .contacts-group-list .contact-item:hover,
