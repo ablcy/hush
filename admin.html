@@ -14,7 +14,7 @@
                 <img src="logo.jpg" alt="Tell Logo" class="password-logo">
                 <h1>Tell Admin</h1>
                 <p>请输入管理员密码</p>
-                <span class="login-version">v4.9.4</span>
+                <span class="login-version">v4.9.5</span>
             </div>
             
             <form id="password-form">
@@ -39,7 +39,7 @@
                 </div>
                 <div class="header-right">
                     <button id="change-pwd-btn" class="btn btn-secondary">修改密码</button>
-                    <span class="version-badge">v4.9.4</span>
+                    <span class="version-badge">v4.9.5</span>
                     <a href="/" class="back-link">← 返回应用</a>
                 </div>
             </div>
@@ -78,6 +78,9 @@
                             <input type="text" id="search-user-search" placeholder="搜索用户...">
                             <button class="search-btn">🔍</button>
                         </div>
+                        <button id="toggle-user-select-btn" class="btn btn-secondary">☑️ 多选</button>
+                        <button id="batch-user-delete-btn" class="btn btn-danger" style="display: none;">🗑️ 批量删除</button>
+                        <button id="batch-user-pwd-btn" class="btn btn-primary" style="display: none;">🔑 批量改密码</button>
                         <button id="refresh-users-btn" class="btn btn-primary">🔄 刷新</button>
                     </div>
                 </div>
@@ -86,6 +89,7 @@
                     <table class="users-table">
                         <thead>
                             <tr>
+                                <th id="select-all-users-th" style="display: none;"><input type="checkbox" id="select-all-users"></th>
                                 <th>头像</th>
                                 <th>用户名</th>
                                 <th>注册时间</th>
@@ -109,6 +113,8 @@
                             <input type="text" id="search-group-search" placeholder="搜索群聊...">
                             <button class="search-btn">🔍</button>
                         </div>
+                        <button id="toggle-group-select-btn" class="btn btn-secondary">☑️ 多选</button>
+                        <button id="batch-group-delete-btn" class="btn btn-danger" style="display: none;">🗑️ 批量删除</button>
                         <button id="refresh-groups-btn" class="btn btn-primary">🔄 刷新</button>
                     </div>
                 </div>
@@ -117,6 +123,7 @@
                     <table class="groups-table">
                         <thead>
                             <tr>
+                                <th id="select-all-groups-th" style="display: none;"><input type="checkbox" id="select-all-groups"></th>
                                 <th>群号</th>
                                 <th>群主</th>
                                 <th>成员数</th>
@@ -148,10 +155,11 @@
 
             <section class="changelog-section">
                 <div class="section-header changelog-header">
-                    <h2>📝 更新日志 v4.9.4 202605111550</h2>
+                    <h2>📝 更新日志 v4.9.5 202605111555</h2>
                     <button id="toggle-changelog-btn" class="btn btn-secondary">▼ 展开</button>
                 </div>
                 <div class="changelog-content" id="changelog-content" style="display: none;">
+                    <div class="update-item">✨ v4.9.5 202605111555: 后台管理添加多选功能，支持批量删除用户、批量修改用户密码、批量解散群聊</div>
                     <div class="update-item">✨ v4.9.4 202605111550: 群列表优化，将群名称和群号合并为群号，优先显示群名称</div>
                     <div class="update-item">✨ v4.9.3 202605111545: 后台管理添加群列表功能，支持查看群号、群名称、群主、成员数等信息，支持解散群聊</div>
                     <div class="update-item">✨ v4.9.2 202605111538: 登录提示用户不存在/密码错误，密码修改后用户5秒内强制下线，管理员密码持久化存储</div>
@@ -265,6 +273,48 @@
             <div class="modal-footer">
                 <button id="cancel-user-pwd-btn" class="btn btn-secondary">取消</button>
                 <button id="save-user-pwd-btn" class="btn btn-primary">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="batch-user-pwd-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>批量修改用户密码</h3>
+                <button id="close-batch-user-pwd-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>将为 <span id="selected-user-count">0</span> 位用户设置新密码</p>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="batch-user-new-password" placeholder="请输入新密码" required>
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="batch-user-confirm-password" placeholder="请再次输入新密码" required>
+                </div>
+                <p class="error-message" id="batch-user-pwd-error"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-batch-user-pwd-btn" class="btn btn-secondary">取消</button>
+                <button id="save-batch-user-pwd-btn" class="btn btn-primary">确认修改</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="batch-confirm-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="batch-modal-title">批量操作确认</h3>
+                <button id="close-batch-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="batch-modal-message">确定要执行此操作吗？</p>
+                <p id="batch-selected-count" style="color: #dc3545; font-weight: bold;"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-batch-btn" class="btn btn-secondary">取消</button>
+                <button id="confirm-batch-btn" class="btn btn-danger">确认</button>
             </div>
         </div>
     </div>

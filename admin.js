@@ -6,6 +6,10 @@ class AdminPanel {
         this.groups = [];
         this.filteredGroups = [];
         this.targetUserId = null;
+        this.userSelectMode = false;
+        this.groupSelectMode = false;
+        this.selectedUsers = new Set();
+        this.selectedGroups = new Set();
         this.init();
     }
 
@@ -54,7 +58,7 @@ class AdminPanel {
         this.loadStats();
         this.loadUsers();
         this.loadGroups();
-        this.addLog('Tell Admin v4.9.4 启动成功', '系统');
+        this.addLog('Tell Admin v4.9.5 启动成功', '系统');
     }
 
     bindEvents() {
@@ -76,6 +80,22 @@ class AdminPanel {
         document.getElementById('close-user-pwd-modal-btn').addEventListener('click', () => this.closeChangeUserPasswordModal());
         document.getElementById('cancel-user-pwd-btn').addEventListener('click', () => this.closeChangeUserPasswordModal());
         document.getElementById('save-user-pwd-btn').addEventListener('click', () => this.changeUserPassword());
+        
+        document.getElementById('toggle-user-select-btn').addEventListener('click', () => this.toggleUserSelectMode());
+        document.getElementById('toggle-group-select-btn').addEventListener('click', () => this.toggleGroupSelectMode());
+        document.getElementById('select-all-users').addEventListener('change', (e) => this.selectAllUsers(e.target.checked));
+        document.getElementById('select-all-groups').addEventListener('change', (e) => this.selectAllGroups(e.target.checked));
+        document.getElementById('batch-user-delete-btn').addEventListener('click', () => this.showBatchUserDeleteConfirm());
+        document.getElementById('batch-user-pwd-btn').addEventListener('click', () => this.showBatchUserPasswordModal());
+        document.getElementById('batch-group-delete-btn').addEventListener('click', () => this.showBatchGroupDeleteConfirm());
+        
+        document.getElementById('close-batch-user-pwd-modal-btn').addEventListener('click', () => this.closeBatchUserPasswordModal());
+        document.getElementById('cancel-batch-user-pwd-btn').addEventListener('click', () => this.closeBatchUserPasswordModal());
+        document.getElementById('save-batch-user-pwd-btn').addEventListener('click', () => this.changeBatchUserPassword());
+        
+        document.getElementById('close-batch-modal-btn').addEventListener('click', () => this.closeBatchConfirmModal());
+        document.getElementById('cancel-batch-btn').addEventListener('click', () => this.closeBatchConfirmModal());
+        document.getElementById('confirm-batch-btn').addEventListener('click', () => this.executeBatchOperation());
     }
 
     toggleChangelog() {
@@ -131,14 +151,18 @@ class AdminPanel {
         const tbody = document.getElementById('users-table-body');
         
         if (this.filteredUsers.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">暂无用户</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5">暂无用户</td></tr>';
             return;
         }
 
         tbody.innerHTML = this.filteredUsers.map(user => {
             const createdAt = user.created_at ? new Date(user.created_at).toLocaleString('zh-CN') : '未知';
+            const isSelected = this.selectedUsers.has(user.id);
             return `
                 <tr>
+                    <td style="display: ${this.userSelectMode ? 'table-cell' : 'none'}">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="admin.toggleUserSelect('${user.id}', this.checked)">
+                    </td>
                     <td><div class="user-avatar">${user.username.charAt(0).toUpperCase()}</div></td>
                     <td>${user.username}</td>
                     <td>${createdAt}</td>
@@ -151,6 +175,53 @@ class AdminPanel {
                 </tr>
             `;
         }).join('');
+    }
+
+    toggleUserSelectMode() {
+        this.userSelectMode = !this.userSelectMode;
+        const toggleBtn = document.getElementById('toggle-user-select-btn');
+        const selectAllTh = document.getElementById('select-all-users-th');
+        const batchDeleteBtn = document.getElementById('batch-user-delete-btn');
+        const batchPwdBtn = document.getElementById('batch-user-pwd-btn');
+        
+        if (this.userSelectMode) {
+            toggleBtn.textContent = '❌ 取消多选';
+            selectAllTh.style.display = 'table-cell';
+            batchDeleteBtn.style.display = 'inline-block';
+            batchPwdBtn.style.display = 'inline-block';
+        } else {
+            toggleBtn.textContent = '☑️ 多选';
+            selectAllTh.style.display = 'none';
+            batchDeleteBtn.style.display = 'none';
+            batchPwdBtn.style.display = 'none';
+            this.selectedUsers.clear();
+            document.getElementById('select-all-users').checked = false;
+        }
+        this.renderUsers();
+    }
+
+    toggleUserSelect(userId, checked) {
+        if (checked) {
+            this.selectedUsers.add(userId);
+        } else {
+            this.selectedUsers.delete(userId);
+        }
+        this.updateSelectAllUsersCheckbox();
+    }
+
+    selectAllUsers(checked) {
+        this.selectedUsers.clear();
+        if (checked) {
+            this.filteredUsers.forEach(user => {
+                this.selectedUsers.add(user.id);
+            });
+        }
+        this.renderUsers();
+    }
+
+    updateSelectAllUsersCheckbox() {
+        const selectAll = document.getElementById('select-all-users');
+        selectAll.checked = this.selectedUsers.size === this.filteredUsers.length && this.filteredUsers.length > 0;
     }
 
     searchUsers(keyword) {
@@ -185,14 +256,18 @@ class AdminPanel {
         const tbody = document.getElementById('groups-table-body');
         
         if (this.filteredGroups.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5">暂无群聊</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6">暂无群聊</td></tr>';
             return;
         }
 
         tbody.innerHTML = this.filteredGroups.map(group => {
             const createdAt = group.created_at ? new Date(group.created_at).toLocaleString('zh-CN') : '未知';
+            const isSelected = this.selectedGroups.has(group.id);
             return `
                 <tr>
+                    <td style="display: ${this.groupSelectMode ? 'table-cell' : 'none'}">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="admin.toggleGroupSelect('${group.id}', this.checked)">
+                    </td>
                     <td>${group.group_number}</td>
                     <td>${group.owner_name}</td>
                     <td>${group.member_count}</td>
@@ -207,6 +282,50 @@ class AdminPanel {
         }).join('');
     }
 
+    toggleGroupSelectMode() {
+        this.groupSelectMode = !this.groupSelectMode;
+        const toggleBtn = document.getElementById('toggle-group-select-btn');
+        const selectAllTh = document.getElementById('select-all-groups-th');
+        const batchDeleteBtn = document.getElementById('batch-group-delete-btn');
+        
+        if (this.groupSelectMode) {
+            toggleBtn.textContent = '❌ 取消多选';
+            selectAllTh.style.display = 'table-cell';
+            batchDeleteBtn.style.display = 'inline-block';
+        } else {
+            toggleBtn.textContent = '☑️ 多选';
+            selectAllTh.style.display = 'none';
+            batchDeleteBtn.style.display = 'none';
+            this.selectedGroups.clear();
+            document.getElementById('select-all-groups').checked = false;
+        }
+        this.renderGroups();
+    }
+
+    toggleGroupSelect(groupId, checked) {
+        if (checked) {
+            this.selectedGroups.add(groupId);
+        } else {
+            this.selectedGroups.delete(groupId);
+        }
+        this.updateSelectAllGroupsCheckbox();
+    }
+
+    selectAllGroups(checked) {
+        this.selectedGroups.clear();
+        if (checked) {
+            this.filteredGroups.forEach(group => {
+                this.selectedGroups.add(group.id);
+            });
+        }
+        this.renderGroups();
+    }
+
+    updateSelectAllGroupsCheckbox() {
+        const selectAll = document.getElementById('select-all-groups');
+        selectAll.checked = this.selectedGroups.size === this.filteredGroups.length && this.filteredGroups.length > 0;
+    }
+
     searchGroups(keyword) {
         if (!keyword) {
             this.filteredGroups = this.groups;
@@ -218,6 +337,157 @@ class AdminPanel {
             );
         }
         this.renderGroups();
+    }
+
+    showBatchUserDeleteConfirm() {
+        if (this.selectedUsers.size === 0) {
+            alert('请先选择要删除的用户');
+            return;
+        }
+        this.currentBatchOperation = 'deleteUsers';
+        document.getElementById('batch-modal-title').textContent = '批量删除用户';
+        document.getElementById('batch-modal-message').textContent = `确定要删除选中的用户吗？此操作不可恢复！`;
+        document.getElementById('batch-selected-count').textContent = `共选中 ${this.selectedUsers.size} 位用户`;
+        document.getElementById('batch-confirm-modal').style.display = 'block';
+    }
+
+    showBatchGroupDeleteConfirm() {
+        if (this.selectedGroups.size === 0) {
+            alert('请先选择要解散的群聊');
+            return;
+        }
+        this.currentBatchOperation = 'deleteGroups';
+        document.getElementById('batch-modal-title').textContent = '批量解散群聊';
+        document.getElementById('batch-modal-message').textContent = `确定要解散选中的群聊吗？此操作不可恢复！`;
+        document.getElementById('batch-selected-count').textContent = `共选中 ${this.selectedGroups.size} 个群聊`;
+        document.getElementById('batch-confirm-modal').style.display = 'block';
+    }
+
+    showBatchUserPasswordModal() {
+        if (this.selectedUsers.size === 0) {
+            alert('请先选择要修改密码的用户');
+            return;
+        }
+        document.getElementById('selected-user-count').textContent = this.selectedUsers.size;
+        document.getElementById('batch-user-pwd-modal').style.display = 'block';
+    }
+
+    closeBatchUserPasswordModal() {
+        document.getElementById('batch-user-pwd-modal').style.display = 'none';
+        document.getElementById('batch-user-pwd-error').textContent = '';
+        document.getElementById('batch-user-new-password').value = '';
+        document.getElementById('batch-user-confirm-password').value = '';
+    }
+
+    closeBatchConfirmModal() {
+        document.getElementById('batch-confirm-modal').style.display = 'none';
+        this.currentBatchOperation = null;
+    }
+
+    async executeBatchOperation() {
+        if (this.currentBatchOperation === 'deleteUsers') {
+            await this.batchDeleteUsers();
+        } else if (this.currentBatchOperation === 'deleteGroups') {
+            await this.batchDeleteGroups();
+        }
+        this.closeBatchConfirmModal();
+    }
+
+    async batchDeleteUsers() {
+        const userIds = Array.from(this.selectedUsers);
+        let successCount = 0;
+        
+        for (const userId of userIds) {
+            try {
+                const response = await fetch(`${this.baseUrl}/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Delete user error:', error);
+            }
+        }
+        
+        this.selectedUsers.clear();
+        this.toggleUserSelectMode();
+        this.loadUsers();
+        this.loadStats();
+        this.addLog(`批量删除用户完成，成功删除 ${successCount}/${userIds.length} 位用户`, '删除');
+        alert(`批量删除完成，成功删除 ${successCount}/${userIds.length} 位用户`);
+    }
+
+    async batchDeleteGroups() {
+        const groupIds = Array.from(this.selectedGroups);
+        let successCount = 0;
+        
+        for (const groupId of groupIds) {
+            try {
+                const response = await fetch(`${this.baseUrl}/api/admin/groups/${groupId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Delete group error:', error);
+            }
+        }
+        
+        this.selectedGroups.clear();
+        this.toggleGroupSelectMode();
+        this.loadGroups();
+        this.addLog(`批量解散群聊完成，成功解散 ${successCount}/${groupIds.length} 个群聊`, '删除');
+        alert(`批量解散完成，成功解散 ${successCount}/${groupIds.length} 个群聊`);
+    }
+
+    async changeBatchUserPassword() {
+        const newPassword = document.getElementById('batch-user-new-password').value;
+        const confirmPassword = document.getElementById('batch-user-confirm-password').value;
+        const errorElement = document.getElementById('batch-user-pwd-error');
+
+        if (!newPassword || !confirmPassword) {
+            errorElement.textContent = '请填写所有字段';
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            errorElement.textContent = '两次输入的密码不一致';
+            return;
+        }
+
+        if (newPassword.length < 1) {
+            errorElement.textContent = '密码不能为空';
+            return;
+        }
+
+        const userIds = Array.from(this.selectedUsers);
+        let successCount = 0;
+        
+        for (const userId of userIds) {
+            try {
+                const response = await fetch(`${this.baseUrl}/api/admin/users/${userId}/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    successCount++;
+                }
+            } catch (error) {
+                console.error('Change password error:', error);
+            }
+        }
+        
+        this.closeBatchUserPasswordModal();
+        this.selectedUsers.clear();
+        this.toggleUserSelectMode();
+        this.addLog(`批量修改密码完成，成功修改 ${successCount}/${userIds.length} 位用户的密码`, '系统');
+        alert(`批量修改密码完成，成功修改 ${successCount}/${userIds.length} 位用户的密码`);
     }
 
     async deleteGroup(groupId, groupName) {
