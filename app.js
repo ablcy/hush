@@ -1169,7 +1169,7 @@ class ChatApp {
                     <div class="avatar" style="background: linear-gradient(135deg, var(--talk-blue), var(--talk-dark-blue));">
                         ${friend.avatar ? `<img src="${friend.avatar}" alt="">` : (friend.nickname || friend.username).charAt(0).toUpperCase()}
                     </div>
-                    <span class="contact-name">${friend.nickname || friend.username}</span>
+                    <span class="contact-name">${friend.nickname || friend.username}${friend.id === this.currentUser?.id ? ' (我)' : ''}</span>
                 </div>
             `).join('');
 
@@ -2060,7 +2060,7 @@ class ChatApp {
         // 更新日志
         const updateTitle = document.querySelector('#update-header h3');
         if (updateTitle) {
-            updateTitle.textContent = t.updateLog + ' v4.8.8';
+            updateTitle.textContent = t.updateLog + ' v4.8.9';
         }
 
         // 个人页
@@ -2093,11 +2093,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.8.8';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v4.8.9';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v4.8.8';
+        document.querySelector('.version-info span:first-child').textContent = 'v4.8.9';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
