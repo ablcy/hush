@@ -2780,11 +2780,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v5.9.3';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v5.9.4';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v5.9.3';
+        document.querySelector('.version-info span:first-child').textContent = 'v5.9.4';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
