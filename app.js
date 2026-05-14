@@ -1,4 +1,4 @@
-const APP_VERSION = typeof VERSION !== 'undefined' ? VERSION.toString() : 'v5.9.18';
+const APP_VERSION = 'v5.9.19';
 
 class ChatApp {
     constructor() {
@@ -840,8 +840,8 @@ class ChatApp {
             this.groupMessages[groupId] = [];
         }
 
-        // 立即显示预加载的消息
-        this.renderGroupMessages();
+        // 立即显示预加载的消息，第一次打开时滚动到底部
+        this.renderGroupMessages(true);
 
         // 后台静默加载群成员和最新消息
         const membersResult = await this.fetchData(`/api/group/${groupId}/members`);
@@ -852,7 +852,7 @@ class ChatApp {
         // 如果没有开启阅后即焚，才加载消息
         if (!shouldBurn) {
             this.loadGroupMessages(groupId).then(() => {
-                this.renderGroupMessages();
+                this.renderGroupMessages(true); // 加载完成后滚动到底部
             });
         }
     }
@@ -948,7 +948,7 @@ class ChatApp {
         this.saveBurnAfterReadingSetting();
     }
 
-    renderGroupMessages() {
+    renderGroupMessages(scrollToBottom = false) {
         const container = document.getElementById('group-messages-container');
         if (!this.currentGroup) {
             container.innerHTML = '<div class="empty-chat"><p>开始聊天吧！</p></div>';
@@ -1013,7 +1013,9 @@ class ChatApp {
             `;
         }).join('');
 
-        container.scrollTop = container.scrollHeight;
+        if (scrollToBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 
     async sendGroupMessage() {
@@ -1041,7 +1043,7 @@ class ChatApp {
             }
             this.groupMessages[this.currentGroup.id].push(result.message);
             input.value = '';
-            this.renderGroupMessages();
+            this.renderGroupMessages(true); // 发送新消息后滚动到底部
         }
     }
 
@@ -1069,7 +1071,7 @@ class ChatApp {
                     this.groupMessages[this.currentGroup.id] = [];
                 }
                 this.groupMessages[this.currentGroup.id].push(sendResult.message);
-                this.renderGroupMessages();
+                this.renderGroupMessages(true); // 发送新消息后滚动到底部
             } else {
                 alert(sendResult.message || '发送图片失败');
             }
@@ -2540,13 +2542,8 @@ class ChatApp {
             this.messages[friendId] = [];
         }
         
-        this.renderMessages();
+        this.renderMessages(true); // 第一次打开时滚动到底部
         this.markMessagesAsRead(friendId);
-        
-        setTimeout(() => {
-            const container = document.getElementById('messages-container');
-            container.scrollTop = container.scrollHeight;
-        }, 100);
     }
 
     closeChatView() {
@@ -2573,7 +2570,7 @@ class ChatApp {
         this.renderChatList();
     }
 
-    renderMessages() {
+    renderMessages(scrollToBottom = false) {
         const container = document.getElementById('messages-container');
 
         if (!this.currentFriend) {
@@ -2629,7 +2626,9 @@ class ChatApp {
             `;
         }).join('');
 
-        container.scrollTop = container.scrollHeight;
+        if (scrollToBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 
     async handleSearchFriend(e) {
@@ -2796,7 +2795,7 @@ class ChatApp {
             }
             this.messages[this.currentFriend.id].push(result.message);
             input.value = '';
-            this.renderMessages();
+            this.renderMessages(true); // 发送新消息后滚动到底部
             this.renderChatList();
         }
     }
@@ -2859,7 +2858,7 @@ class ChatApp {
                     this.messages[this.currentFriend.id] = [];
                 }
                 this.messages[this.currentFriend.id].push(sendResult.message);
-                this.renderMessages();
+                this.renderMessages(true); // 发送新消息后滚动到底部
                 this.renderChatList();
             } else {
                 alert('发送失败: ' + (sendResult.message || '未知错误'));
