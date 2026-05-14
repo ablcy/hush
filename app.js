@@ -1037,8 +1037,10 @@ class ChatApp {
         const file = e.target.files[0];
         if (!file) return;
 
+        const compressedFile = await this.compressImageFile(file, 200, 800);
+
         const formData = new FormData();
-        formData.append('avatar', file);
+        formData.append('avatar', compressedFile);
         formData.append('groupId', this.currentGroup.id);
 
         try {
@@ -1752,6 +1754,57 @@ class ChatApp {
         } catch (e) {
             callback(null);
         }
+    }
+
+    async compressImageFile(file, maxSizeKB = 200, maxDimension = 1200) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    let { width, height } = img;
+                    const originalSizeKB = file.size / 1024;
+
+                    if (originalSizeKB <= maxSizeKB && width <= maxDimension && height <= maxDimension) {
+                        resolve(file);
+                        return;
+                    }
+
+                    const ratio = Math.min(maxDimension / width, maxDimension / height, 1);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    let quality = 0.9;
+                    let result = canvas.toDataURL('image/jpeg', quality);
+
+                    while (result.length * 0.75 / 1024 > maxSizeKB && quality > 0.3) {
+                        quality -= 0.1;
+                        result = canvas.toDataURL('image/jpeg', quality);
+                    }
+
+                    const byteString = atob(result.split(',')[1]);
+                    const mimeType = result.match(/data:(.*?);/)[1];
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    const compressedFile = new File([ab], file.name || 'image.jpg', { type: mimeType });
+
+                    resolve(compressedFile);
+                };
+                img.onerror = () => resolve(file);
+                img.src = e.target.result;
+            };
+            reader.onerror = () => resolve(file);
+            reader.readAsDataURL(file);
+        });
     }
 
     showAuthScreen() {
@@ -2615,8 +2668,10 @@ class ChatApp {
         const file = e.target.files[0];
         if (!file) return;
 
+        const compressedFile = await this.compressImageFile(file, 200, 800);
+
         const formData = new FormData();
-        formData.append('avatar', file);
+        formData.append('avatar', compressedFile);
         formData.append('userId', this.currentUser.id);
 
         try {
@@ -2648,8 +2703,10 @@ class ChatApp {
         const file = e.target.files[0];
         if (!file) return;
 
+        const compressedFile = await this.compressImageFile(file, 200, 1200);
+
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('image', compressedFile);
 
         try {
             const response = await fetch(`${this.baseUrl}/api/upload-image`, {
@@ -3064,7 +3121,7 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v5.9.8';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v5.9.9';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
