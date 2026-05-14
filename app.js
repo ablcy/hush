@@ -1591,42 +1591,166 @@ class ChatApp {
 
         if (result.success) {
             this.currentUser = result.user;
-            localStorage.setItem('currentUser', JSON.stringify(result.user));
+            
+            // 优化：延迟写入localStorage，不阻塞主线程
+            this.deferredSaveToStorage('currentUser', JSON.stringify(result.user));
 
             if (result.friends) {
                 this.friends = result.friends;
-                localStorage.setItem('cachedFriends', JSON.stringify(result.friends));
+                this.deferredSaveToStorage('cachedFriends', JSON.stringify(result.friends));
             }
             if (result.groups) {
                 this.groups = result.groups;
-                localStorage.setItem('cachedGroups', JSON.stringify(result.groups));
+                this.deferredSaveToStorage('cachedGroups', JSON.stringify(result.groups));
             }
 
-            // 立即显示主界面（最小化DOM操作）
-            this.showMainScreen();
-            this.updateProfile();
+            // 立即切换界面（关键优化：先显示，再渲染内容）
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-screen').style.display = 'flex';
             
-            // 使用requestAnimationFrame异步渲染，不阻塞主线程
-            requestAnimationFrame(() => {
-                this.renderChatListFast();
-                requestAnimationFrame(() => {
-                    this.renderContactsFast();
+            // 最小化同步操作：只更新用户名，头像用首字母占位
+            this.updateProfileSkeleton();
+
+            // 极致优化：使用微任务异步渲染
+            queueMicrotask(() => {
+                this.renderChatListUltraFast();
+                queueMicrotask(() => {
+                    this.renderContactsUltraFast();
                     this.setButtonLoading('login-form-submit-btn', false);
+                    
+                    // 后台懒加载头像
+                    setTimeout(() => {
+                        this.lazyLoadAvatars();
+                    }, 100);
                 });
             });
 
-            // 后台异步加载其他内容
+            // 延迟加载消息和socket（非关键路径）
             setTimeout(() => {
                 this.loadMessages();
+            }, 500);
+            
+            setTimeout(() => {
                 this.startPolling();
                 this.startPasswordVersionCheck();
-            }, 50);
-            
-            // 登录socket
-            this.loginSocket();
+                this.loginSocket();
+            }, 1000);
         } else {
             this.setButtonLoading('login-form-submit-btn', false);
             document.getElementById('login-error').textContent = result.message || '登录失败';
+        }
+    }
+
+    deferredSaveToStorage(key, value) {
+        // 延迟写入localStorage，避免阻塞主线程
+        setTimeout(() => {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {
+                console.warn('LocalStorage save failed:', e);
+            }
+        }, 0);
+    }
+
+    updateProfileSkeleton() {
+        // 骨架屏版本：只更新文字，头像用首字母占位
+        if (!this.currentUser) return;
+        
+        const avatarText = document.getElementById('profile-avatar');
+        avatarText.textContent = this.currentUser.username.charAt(0).toUpperCase();
+        avatarText.style.display = 'flex';
+        
+        const avatarImg = document.getElementById('profile-avatar-img');
+        avatarImg.style.display = 'none';
+        
+        document.getElementById('profile-username').textContent = this.currentUser.username;
+        
+        const nicknameEl = document.getElementById('profile-nickname');
+        if (this.currentUser.nickname) {
+            nicknameEl.textContent = this.currentUser.nickname;
+            nicknameEl.style.display = 'inline';
+        } else {
+            nicknameEl.style.display = 'none';
+        }
+    }
+
+    async lazyLoadAvatars() {
+        // 懒加载所有头像，使用压缩版本
+        const avatarImgs = document.querySelectorAll('.avatar img');
+        avatarImgs.forEach(img => {
+            const src = img.getAttribute('src');
+            if (src && !img.dataset.lazyLoaded) {
+                img.dataset.lazyLoaded = 'true';
+                // 使用图片压缩优化加载速度
+                img.onload = () => {
+                    this.compressImageIfNeeded(img);
+                };
+            }
+        });
+        
+        // 延迟加载用户头像
+        if (this.currentUser?.avatar) {
+            setTimeout(() => {
+                const profileImg = document.getElementById('profile-avatar-img');
+                profileImg.onload = () => {
+                    profileImg.style.display = 'block';
+                    document.getElementById('profile-avatar').style.display = 'none';
+                    this.compressImageIfNeeded(profileImg);
+                };
+                profileImg.src = this.currentUser.avatar;
+            }, 200);
+        }
+    }
+
+    compressImageIfNeeded(img) {
+        // 如果图片过大，进行压缩
+        if (!img.complete) return;
+        
+        const maxSizeKB = 100;
+        const fileSize = (img.src.length * 0.75) / 1024; // 估算Base64大小
+        
+        if (fileSize > maxSizeKB && img.src.startsWith('data:')) {
+            this.compressBase64Image(img.src, (compressedSrc) => {
+                if (compressedSrc) {
+                    img.src = compressedSrc;
+                }
+            });
+        }
+    }
+
+    compressBase64Image(base64, callback) {
+        try {
+            const img = new Image();
+            img.onload = () => {
+                const maxWidth = 200;
+                const maxHeight = 200;
+                
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                if (height > maxHeight) {
+                    width = (width * maxHeight) / height;
+                    height = maxHeight;
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const compressed = canvas.toDataURL('image/jpeg', 0.8);
+                callback(compressed);
+            };
+            img.onerror = () => callback(null);
+            img.src = base64;
+        } catch (e) {
+            callback(null);
         }
     }
 
@@ -1965,6 +2089,78 @@ class ChatApp {
         }
 
         chatList.innerHTML = arr.join('');
+    }
+
+    renderChatListUltraFast() {
+        const chatList = document.getElementById('chat-list');
+        const groups = this.groups;
+        const friends = this.friends;
+        const groupsLen = groups.length;
+        const friendsLen = friends.length;
+        const userId = this.currentUser?.id;
+        
+        if (groupsLen === 0 && friendsLen === 0) {
+            chatList.innerHTML = '<div class="empty-state">暂无好友或群聊，请搜索添加</div>';
+            return;
+        }
+
+        // 使用字符串数组拼接，比字符串+=快很多
+        const htmlParts = [];
+        let len = 0;
+
+        // 先收集所有项（不排序，更快）
+        for (let i = 0; i < groupsLen; i++) {
+            const g = groups[i];
+            const initial = g.name ? g.name.charAt(0).toUpperCase() : 'G';
+            htmlParts[len++] = `<div class="chat-item group-item" data-group-id="${g.id}" data-avatar="${g.avatar || ''}" onclick="app.openGroupChat('${g.id}')"><div class="avatar"><div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;">${initial}</div></div><div class="chat-info"><div class="chat-name">${g.name}${g.role === 'owner' ? ' (群主)' : ''}</div><div class="chat-preview">暂无消息</div></div><div></div></div>`;
+        }
+
+        for (let i = 0; i < friendsLen; i++) {
+            const f = friends[i];
+            const initial = f.username ? f.username.charAt(0).toUpperCase() : '?';
+            htmlParts[len++] = `<div class="chat-item" data-friend-id="${f.id}" data-avatar="${f.avatar || ''}" onclick="app.openChat('${f.id}')"><div class="avatar"><div style="width:100%;height:100%;border-radius:50%;background:var(--talk-blue);color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;">${initial}</div></div><div class="chat-info"><div class="chat-name">${f.id === userId ? f.username + ' (我)' : f.username}</div><div class="chat-preview">暂无消息</div></div><div></div></div>`;
+        }
+
+        chatList.innerHTML = htmlParts.join('');
+    }
+
+    renderContactsUltraFast() {
+        const groupList = document.getElementById('contacts-group-list');
+        const friendList = document.getElementById('contacts-friend-list');
+        const groups = this.groups;
+        const friends = this.friends;
+        const groupsLen = groups.length;
+        const friendsLen = friends.length;
+        const userId = this.currentUser?.id;
+
+        if (groupsLen > 0) {
+            document.getElementById('contacts-groups-section').style.display = 'block';
+            const htmlParts = [];
+            for (let i = 0; i < groupsLen; i++) {
+                const g = groups[i];
+                const initial = g.name ? g.name.charAt(0).toUpperCase() : '群';
+                htmlParts.push(`<div class="contact-item" data-group-id="${g.id}" data-avatar="${g.avatar || ''}"><div class="avatar" style="background:linear-gradient(135deg,#667eea,#764ba2);">${initial}</div><span class="contact-name">${g.name || g.account}</span></div>`);
+            }
+            groupList.innerHTML = htmlParts.join('');
+        } else {
+            document.getElementById('contacts-groups-section').style.display = 'none';
+            groupList.innerHTML = '';
+        }
+
+        if (friendsLen > 0) {
+            document.getElementById('contacts-friends-section').style.display = 'block';
+            const htmlParts = [];
+            for (let i = 0; i < friendsLen; i++) {
+                const f = friends[i];
+                const name = f.nickname || f.username;
+                const initial = name.charAt(0).toUpperCase();
+                htmlParts.push(`<div class="contact-item" data-friend-id="${f.id}" data-avatar="${f.avatar || ''}"><div class="avatar" style="background:linear-gradient(135deg,var(--talk-blue),var(--talk-dark-blue));">${initial}</div><span class="contact-name">${name}${f.id === userId ? ' (我)' : ''}</span></div>`);
+            }
+            friendList.innerHTML = htmlParts.join('');
+        } else {
+            document.getElementById('contacts-friends-section').style.display = 'none';
+            friendList.innerHTML = '';
+        }
     }
 
     renderContactsFast() {
@@ -2868,11 +3064,11 @@ class ChatApp {
         }
 
         // 页脚
-        document.querySelector('.footer-info p:first-child').textContent = 'Tell v5.9.7';
+        document.querySelector('.footer-info p:first-child').textContent = 'Tell v5.9.8';
         document.querySelector('.copyright').textContent = t.copyright;
 
         // 版本信息
-        document.querySelector('.version-info span:first-child').textContent = 'v5.9.7';
+        document.querySelector('.version-info span:first-child').textContent = 'v5.9.8';
 
         // 聊天输入框
         document.getElementById('message-input').placeholder = this.currentLang === 'zh' ? '输入消息...' : 'Type a message...';
