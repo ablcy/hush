@@ -1,4 +1,4 @@
-const APP_VERSION = 'v5.9.21';
+const APP_VERSION = typeof VERSION !== 'undefined' ? VERSION.full() : 'v5.9.23';
 
 class ChatApp {
     constructor() {
