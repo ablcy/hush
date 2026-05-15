@@ -62,7 +62,71 @@ class ChatApp {
         this.currentCallTarget = null;
         
         this.loadBurnAfterReadingSetting();
+        this.loadNotificationSettings();
         this.init();
+    }
+
+    loadNotificationSettings() {
+        try {
+            const saved = localStorage.getItem('notificationSettings');
+            if (saved) {
+                const data = JSON.parse(saved);
+                this.notificationSettings = data;
+            } else {
+                this.notificationSettings = {};
+            }
+        } catch {
+            this.notificationSettings = {};
+        }
+    }
+
+    saveNotificationSettings() {
+        localStorage.setItem('notificationSettings', JSON.stringify(this.notificationSettings));
+    }
+
+    isNotificationEnabled(userId, isGroup = false) {
+        const key = isGroup ? `group_${userId}` : `friend_${userId}`;
+        if (this.notificationSettings[key] !== undefined) {
+            return this.notificationSettings[key];
+        }
+        return true;
+    }
+
+    setNotificationEnabled(userId, enabled, isGroup = false) {
+        const key = isGroup ? `group_${userId}` : `friend_${userId}`;
+        this.notificationSettings[key] = enabled;
+        this.saveNotificationSettings();
+    }
+
+    playNotificationSound(type = 'message') {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            if (type === 'call') {
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+            } else {
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            }
+        } catch (e) {
+            console.log('[App] Cannot play notification sound:', e);
+        }
     }
 
     loadBurnAfterReadingSetting() {
@@ -201,9 +265,11 @@ class ChatApp {
         document.getElementById('close-friend-info-modal').addEventListener('click', () => this.closeFriendInfoModal());
         document.getElementById('delete-friend-btn').addEventListener('click', () => this.deleteFriend());
         document.getElementById('burn-after-reading-toggle').addEventListener('change', (e) => this.toggleBurnAfterReading(e));
+        document.getElementById('friend-notification-toggle').addEventListener('change', (e) => this.toggleFriendNotification(e));
 
         // 群聊阅后即焚事件
         document.getElementById('group-burn-after-reading-toggle').addEventListener('change', (e) => this.toggleGroupBurnAfterReading(e));
+        document.getElementById('group-notification-toggle').addEventListener('change', (e) => this.toggleGroupNotification(e));
 
         // 新增：合并搜索入口的加入群聊按钮
         document.getElementById('confirm-join-group-btn').addEventListener('click', () => this.confirmJoinGroup());
@@ -490,21 +556,25 @@ class ChatApp {
             this.socket.emit('call-reject', { targetId: data.from });
             return;
         }
-        
+
         this.currentCallTarget = this.friends.find(f => f.id === data.from);
-        
+
         if (!this.currentCallTarget) {
             return;
         }
-        
+
         this.isInCall = true;
-        
+
+        if (this.isNotificationEnabled(data.from, false)) {
+            this.playNotificationSound('call');
+        }
+
         // 显示来电界面
         this.showCallModal('incoming', data.fromUsername);
-        
+
         // 创建PeerConnection
         this.peerConnection = this.createPeerConnection();
-        
+
         // 设置远程描述
         this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer))
             .then(() => {
@@ -927,6 +997,9 @@ class ChatApp {
         const burnToggle = document.getElementById('burn-after-reading-toggle');
         burnToggle.checked = this.burnAfterReadingFriendId === this.currentFriend.id;
 
+        const notificationToggle = document.getElementById('friend-notification-toggle');
+        notificationToggle.checked = this.isNotificationEnabled(this.currentFriend.id, false);
+
         document.getElementById('friend-info-modal').style.display = 'flex';
     }
 
@@ -979,6 +1052,16 @@ class ChatApp {
             this.burnAfterReadingGroupId = null;
         }
         this.saveBurnAfterReadingSetting();
+    }
+
+    toggleFriendNotification(e) {
+        if (!this.currentFriend) return;
+        this.setNotificationEnabled(this.currentFriend.id, e.target.checked, false);
+    }
+
+    toggleGroupNotification(e) {
+        if (!this.currentGroup) return;
+        this.setNotificationEnabled(this.currentGroup.id, e.target.checked, true);
     }
 
     renderGroupMessages(scrollToBottom = false) {
@@ -1216,6 +1299,10 @@ class ChatApp {
         // 设置阅后即焚开关状态
         const burnToggle = document.getElementById('group-burn-after-reading-toggle');
         burnToggle.checked = this.burnAfterReadingGroupId === this.currentGroup.id;
+
+        // 设置消息通知开关状态
+        const notificationToggle = document.getElementById('group-notification-toggle');
+        notificationToggle.checked = this.isNotificationEnabled(this.currentGroup.id, true);
 
         // 显示群成员
         const result = await this.fetchData(`/api/group/${this.currentGroup.id}/members`);
@@ -2489,7 +2576,17 @@ class ChatApp {
                 if (this.burnAfterReadingFriendId === friend.id) {
                     continue;
                 }
+                const oldCount = (this.messages[friend.id] || []).length;
                 this.messages[friend.id] = result.messages;
+                const newCount = result.messages.length;
+                if (newCount > oldCount && this.isNotificationEnabled(friend.id, false)) {
+                    const newMsgs = result.messages.slice(oldCount);
+                    const hasNewFromOther = newMsgs.some(m => m.senderId !== this.currentUser.id);
+                    if (hasNewFromOther) {
+                        this.playNotificationSound('message');
+                        break;
+                    }
+                }
             }
         }
 
@@ -2499,7 +2596,17 @@ class ChatApp {
                 if (this.burnAfterReadingGroupId === group.id) {
                     continue;
                 }
+                const oldCount = (this.groupMessages[group.id] || []).length;
                 this.groupMessages[group.id] = result.messages;
+                const newCount = result.messages.length;
+                if (newCount > oldCount && this.isNotificationEnabled(group.id, true)) {
+                    const newMsgs = result.messages.slice(oldCount);
+                    const hasNewFromOther = newMsgs.some(m => m.senderId !== this.currentUser.id);
+                    if (hasNewFromOther) {
+                        this.playNotificationSound('message');
+                        break;
+                    }
+                }
             }
         }
 
