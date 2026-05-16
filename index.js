@@ -1245,6 +1245,28 @@ app.post('/api/send-message', async (req, res) => {
 
     res.json({ success: true, message });
 
+    const receiverSocketId = onlineUsers.get(receiverId);
+    if (receiverSocketId) {
+      let sender;
+      if (DATABASE_URL) {
+        sender = await usersDB.query('SELECT username, avatar FROM users WHERE id = $1', [senderId]);
+        sender = sender.rows[0];
+      } else {
+        sender = await promisifyDB(usersDB.findOne).call(usersDB, { id: senderId }) || {};
+      }
+
+      io.to(receiverSocketId).emit('new-message', {
+        id: message.id,
+        sender_id: senderId,
+        sender_username: sender?.username || '未知用户',
+        receiver_id: receiverId,
+        content: content,
+        type: type || 'text',
+        time: message.time,
+        timestamp: message.timestamp
+      });
+    }
+
     if (senderId !== AI_AGENT_ID) {
       let receiver;
       if (DATABASE_URL) {

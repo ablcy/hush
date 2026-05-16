@@ -558,16 +558,21 @@ class ChatApp {
     }
 
     handleNewMessage(data) {
-        if (data.sender_username === this.AI_AGENT_USERNAME) {
-            const aiFriend = this.friends.find(f => f.username === this.AI_AGENT_USERNAME);
-            if (aiFriend && this.currentFriend?.id === aiFriend.id) {
-                if (!this.messages[aiFriend.id]) {
-                    this.messages[aiFriend.id] = [];
-                }
-                this.messages[aiFriend.id].push({
+        const senderId = data.sender_id;
+        const receiverId = data.receiver_id;
+        const chatPartnerId = senderId === this.currentUser?.id ? receiverId : senderId;
+
+        if (this.currentFriend?.id === chatPartnerId) {
+            if (!this.messages[chatPartnerId]) {
+                this.messages[chatPartnerId] = [];
+            }
+            const exists = this.messages[chatPartnerId].some(m => m.id === data.id);
+            if (!exists) {
+                this.messages[chatPartnerId].push({
                     id: data.id,
                     sender_id: data.sender_id,
                     senderId: data.sender_id,
+                    receiver_id: data.receiver_id,
                     content: data.content,
                     type: data.type || 'text',
                     time: data.time,
@@ -575,10 +580,13 @@ class ChatApp {
                 });
                 this.renderMessages(true);
             }
+        }
 
-            if (this.currentUser && this.isNotificationEnabled(aiFriend?.id, false)) {
-                this.playNotificationSound('message');
-                this.showToast(`AI助手: ${data.content.substring(0, 50)}`);
+        if (data.sender_username !== this.AI_AGENT_USERNAME && this.currentUser?.id === receiverId) {
+            this.playNotificationSound('message');
+            const sender = this.friends.find(f => f.id === senderId);
+            if (sender) {
+                this.showToast(`${sender.username}: ${data.content.substring(0, 30)}`);
             }
         }
     }
