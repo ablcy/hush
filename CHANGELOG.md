@@ -1,5 +1,10 @@
 # 更新日志
 
+## ✨ v5.9.46 202605171800
+
+- 添加 Maskable Icon 支持，优化 Android 图标显示效果
+- 更新 manifest.json 添加 tell-icon.png 作为 maskable 图标
+
 ## ✨ v5.9.45 202605171700
 
 - 未读消息数改为圆形样式
