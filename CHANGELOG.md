@@ -1,5 +1,11 @@
 # 更新日志
 
+## ✨ v5.9.40 202605171401
+
+- 修复接听电话后铃声还在响的问题，在 handleAnswer 中添加 try-catch 确保 stopCallRingtone 正确执行
+- 修复对方挂断电话后拨打方没有退出视频框的问题，在 handleCallEnd 中添加 alert 提醒
+- 彻底更新所有硬编码版本号至 v5.9.40，包括 version.js、app.js、index.html、admin.html、admin.js、sw.js、CHANGELOG.md
+
 ## ✨ v5.9.39 202605171401
 
 - 修复视频通话来电铃声仍然只响一次的问题

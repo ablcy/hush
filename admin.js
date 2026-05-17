@@ -58,7 +58,7 @@ class AdminPanel {
         this.loadStats();
         this.loadUsers();
         this.loadGroups();
-        const version = typeof VERSION !== 'undefined' ? VERSION.full() : 'v5.9.35';
+        const version = typeof VERSION !== 'undefined' ? VERSION.full() : 'v5.9.40';
         this.addLog(`Tell Admin ${version} 启动成功`, '系统');
     }
 

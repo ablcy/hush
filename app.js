@@ -1,4 +1,4 @@
-const APP_VERSION = typeof VERSION !== 'undefined' ? VERSION.full() : 'v5.9.35';
+const APP_VERSION = typeof VERSION !== 'undefined' ? VERSION.full() : 'v5.9.40';
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
@@ -744,21 +744,30 @@ class ChatApp {
     }
     
     handleAnswer(data) {
-        this.stopCallRingtone();
-        this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-        this.updateCallModal('connected');
+        try {
+            this.stopCallRingtone();
+        } catch (e) {
+            console.log('[App] Error stopping ringtone:', e);
+        }
+        try {
+            this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            this.updateCallModal('connected');
+        } catch (e) {
+            console.log('[App] Error setting remote description:', e);
+        }
     }
-    
+
     handleIceCandidate(data) {
         if (data.candidate && this.peerConnection) {
             this.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
         }
     }
-    
+
     handleCallEnd(data) {
+        alert('对方已挂断通话');
         this.endCall();
     }
-    
+
     handleCallReject(data) {
         alert('对方拒绝了通话');
         this.endCall();
